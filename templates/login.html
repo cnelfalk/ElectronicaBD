@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>TechMatch - Iniciar sesión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="contenedor">
+        <h1>TechMatch</h1>
+        <h2>Iniciar sesión</h2>
+
+        {% if error %}
+            <p class="error">{{ error }}</p>
+        {% endif %}
+
+        <form action="/login" method="POST">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="contrasenia">Contraseña</label>
+            <input type="password" id="contrasenia" name="contrasenia" required>
+
+            <button type="submit">Entrar</button>
+        </form>
+
+        <p>¿No tenés cuenta? <a href="/registro">Registrate</a></p>
+    </main>
+</body>
+</html>
