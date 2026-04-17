@@ -82,37 +82,73 @@ class MercadoLibreScraper(ScraperPrecios):
         self._log_info("Iniciando scraping de Mercado Libre...")
         resultados: list[dict] = []
 
-        # Búsquedas por término. TODO: parametrizar desde afuera.
-        busquedas = ["notebook-gamer", "procesador-amd", "procesador-intel", "placa-de-video"]
+        # Términos de búsqueda
+        busquedas = ["lenovo-ideapad-3", "hp-victus", "ryzen-5-4600g"]
 
         for termino in busquedas:
             url = f"{self._url_base}/{termino}"
             html = self._obtener_html(url)
+            
             if not html:
+                self._log_error(f"No se pudo obtener el HTML para {termino}")
                 continue
 
             soup = self._parsear(html)
 
-            # TODO: ajustar selectores. ML cambia su HTML seguido, por eso
-            # conviene centralizarlos acá para que sean fáciles de actualizar.
-            # Ejemplo tentativo:
-            #   items = soup.select("li.ui-search-layout__item")
-            #   for item in items:
-            #       modelo = item.select_one("h2.ui-search-item__title").get_text(strip=True)
-            #       precio = self._parsear_precio(
-            #           item.select_one("span.andes-money-amount__fraction").get_text()
-            #       )
-            #       url_prod = item.select_one("a.ui-search-link")["href"]
-            #       resultados.append({
-            #           "modelo": modelo,
-            #           "precio": precio,
-            #           "url_producto": url_prod,
-            #           "id_tienda": self._id_tienda,
-            #       })
+            # Selectores amplios
+            items = soup.select("li.ui-search-layout__item, div.poly-card, div.ui-search-result")
+            
+            if not items:
+                self._log_error(f"No se encontraron items para {termino}.")
+                continue
+
+            # Usamos un Set para guardar las URLs que ya vimos y no duplicar
+            urls_vistas = set()
+            agregados_termino = 0
+
+            for item in items:
+                # Si ya atrapamos 5 distintos de este término, pasamos al siguiente
+                if agregados_termino >= 5:
+                    break
+
+                # Extraer título
+                titulo_el = item.select_one("h2.ui-search-item__title, h2.poly-box, h2.poly-component__title, a.poly-component__title")
+                if not titulo_el:
+                    continue
+                modelo = titulo_el.get_text(strip=True)
+
+                # Filtro de intrusos: verificamos que la primera palabra de la búsqueda esté en el título
+                # Ej: Si busco "ryzen-5-4600g", verifico que "ryzen" esté en el título.
+                palabra_clave = termino.split('-')[0].lower()
+                if palabra_clave not in modelo.lower():
+                    continue
+
+                # Extraer Link
+                link_el = item.select_one("a.ui-search-link, a.poly-component__title")
+                url_prod = link_el["href"] if link_el else ""
+
+                # Control de duplicados por URL
+                if url_prod in urls_vistas or not url_prod:
+                    continue
+                urls_vistas.add(url_prod)
+
+                # Extraer precio
+                precio_el = item.select_one("span.andes-money-amount__fraction, div.poly-price__current span.andes-money-amount__fraction")
+                precio_txt = precio_el.get_text(strip=True) if precio_el else "0"
+                precio = self._parsear_precio(precio_txt)
+
+                resultados.append({
+                    "modelo": modelo,
+                    "precio": precio,
+                    "url_producto": url_prod,
+                    "id_tienda": self._id_tienda,
+                })
+                agregados_termino += 1
 
         self._log_info(f"Finalizado: {len(resultados)} productos extraídos.")
         return resultados
-
+    
+    
     @staticmethod
     def _parsear_precio(texto: str) -> float:
         limpio = texto.replace(".", "").replace(",", ".").strip()
