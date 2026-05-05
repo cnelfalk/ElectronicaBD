@@ -1,0 +1,116 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // Referencias a los elementos del DOM
+    const contenedorProductos = document.getElementById('contenedorProductos');
+    const btnAplicarFiltros = document.getElementById('btnAplicarFiltros');
+    const filtroCategoria = document.getElementById('filtroCategoria');
+    const filtroPerfil = document.getElementById('filtroPerfil');
+    const buscarNombre = document.getElementById('buscarNombre');
+
+    // URL base de nuestro backend Flask (Laragon)
+    const API_URL = 'http://100.82.23.52:5000/api';
+
+    // Función principal para cargar productos
+    async function cargarProductos() {
+        // Mostrar estado de carga
+        contenedorProductos.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-primary" role="status"></div>
+                <p>Cargando catálogo...</p>
+            </div>
+        `;
+
+        // Construir la URL con los parámetros de filtro
+        const params = new URLSearchParams();
+        if (filtroCategoria.value) params.append('categoria', filtroCategoria.value);
+        if (filtroPerfil.value) params.append('perfil', filtroPerfil.value);
+        if (buscarNombre.value) params.append('busqueda', buscarNombre.value);
+
+        const urlConFiltros = `${API_URL}/productos?${params.toString()}`;
+
+        try {
+            // Realizar la petición HTTP al backend Flask
+            const respuesta = await fetch(urlConFiltros);
+
+            // Si la respuesta no es OK (ej. 500 error del servidor)
+            if (!respuesta.ok) {
+                throw new Error(`Error HTTP: ${respuesta.status}`);
+            }
+
+            const datosJson = await respuesta.json();
+
+            // Si el backend responde que fue exitoso
+            if (datosJson.success) {
+                renderizarProductos(datosJson.data);
+            } else {
+                mostrarError(datosJson.mensaje);
+            }
+
+        } catch (error) {
+            console.error('Error al conectar con la API:', error);
+            mostrarError('No se pudo conectar con el servidor. Verificá que Flask esté corriendo.');
+        }
+    }
+
+    // Función para dibujar las tarjetas (cards) en el HTML
+    function renderizarProductos(productos) {
+        contenedorProductos.innerHTML = ''; // Limpiar contenedor
+
+        if (productos.length === 0) {
+            contenedorProductos.innerHTML = '<div class="col-12 text-center"><p>No se encontraron productos con esos filtros.</p></div>';
+            return;
+        }
+
+        productos.forEach(producto => {
+            // Crear el HTML de la tarjeta para cada producto
+            const cardHTML = `
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 shadow-sm">
+                        <!-- Imagen (usando un placeholder si no hay imagen en la BD) -->
+                        <img src="${producto.img_url || 'https://via.placeholder.com/150'}" class="card-img-top p-3" alt="${producto.modelo}" style="object-fit: contain; height: 150px;">
+                        <div class="card-body d-flex flex-column">
+                            <span class="badge bg-secondary mb-2 align-self-start">${producto.categoria}</span>
+                            <h5 class="card-title text-truncate" title="${producto.modelo}">${producto.modelo}</h5>
+                            <p class="card-text text-muted small">${producto.marca}</p>
+                            
+                            <!-- Botones de acción -->
+                            <div class="mt-auto d-grid gap-2">
+                                <button class="btn btn-outline-primary btn-sm btn-comparar" data-id="${producto.id_producto}">
+                                    Añadir a Comparar
+                                </button>
+                                <button class="btn btn-light btn-sm btn-favorito" data-id="${producto.id_producto}">
+                                    ❤️ Guardar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            // Insertar el HTML en el contenedor
+            contenedorProductos.insertAdjacentHTML('beforeend', cardHTML);
+        });
+    }
+
+    // Función para mostrar mensajes de error amigables
+    function mostrarError(mensaje) {
+        contenedorProductos.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger" role="alert">
+                    ${mensaje}
+                </div>
+            </div>
+        `;
+    }
+
+    // --- Event Listeners ---
+
+    // Cargar productos al iniciar la página
+    cargarProductos();
+
+    // Recargar productos cuando el usuario hace clic en "Aplicar Filtros"
+    btnAplicarFiltros.addEventListener('click', cargarProductos);
+
+    // Opcional: Recargar al presionar "Enter" en el buscador
+    buscarNombre.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') cargarProductos();
+    });
+});
