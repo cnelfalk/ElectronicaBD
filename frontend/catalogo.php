@@ -11,17 +11,7 @@
 </head>
 <body>
 
-    <!-- Incluir la barra de navegación (esto lo pueden tener en components/navbar.php) -->
-    <!-- <?php include 'components/navbar.php'; ?> -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="#">TechMatch</a>
-            <div class="d-flex">
-                <a href="favoritos.php" class="btn btn-outline-light me-2">Mis Favoritos</a>
-                <a href="historial.php" class="btn btn-outline-light">Historial</a>
-            </div>
-        </div>
-    </nav>
+    <?php include 'componentes/navbar.php'; ?>
 
     <div class="container mt-4">
         <div class="row">

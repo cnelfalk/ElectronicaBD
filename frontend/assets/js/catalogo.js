@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="btn btn-outline-primary btn-sm btn-comparar" data-id="${producto.id_producto}">
                                     Añadir a Comparar
                                 </button>
-                                <button class="btn btn-light btn-sm btn-favorito" data-id="${producto.id_producto}">
+                                <button class="btn btn-light btn-sm btn-favorito" data-id="${producto.id_producto}" onclick="guardarFavorito(this)">
                                     ❤️ Guardar
                                 </button>
                             </div>
@@ -114,3 +114,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') cargarProductos();
     });
 });
+
+function guardarFavorito(btn) {
+    const usuario = localStorage.getItem('techmatch_usuario');
+
+    if (!usuario) {
+        window.location.href = 'login.php?redirect=catalogo.php';
+        return;
+    }
+
+    // TODO: conectar con el endpoint de favoritos (Prioridad 3)
+    btn.textContent = '✅ Guardado';
+    btn.disabled = true;
+}
