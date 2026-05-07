@@ -10,7 +10,7 @@
             </div>
 
             <!-- Estado: logueado (oculto hasta que JS lo muestre) -->
-            <div id="nav-con-sesion" style="display:none;" class="d-flex align-items-center gap-2">
+            <div id="nav-con-sesion" style="display:none;" class="align-items-center gap-2">
                 <span class="text-light small" id="nav-nombre-usuario"></span>
                 <button class="btn btn-outline-light btn-sm" onclick="cerrarSesion()">Cerrar Sesión</button>
             </div>

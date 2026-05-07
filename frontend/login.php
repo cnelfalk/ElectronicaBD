@@ -44,9 +44,8 @@
         </div>
     </div>
 
+    <script src="assets/js/api.js"></script>
     <script>
-        const API_URL = 'http://100.82.23.52:5000/api';
-
         // Si ya está logueado, redirigir directo al catálogo
         if (localStorage.getItem('techmatch_usuario')) {
             window.location.href = 'catalogo.php';

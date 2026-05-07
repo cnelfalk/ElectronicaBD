@@ -1,137 +1,156 @@
 import sys
 import os
-directorio_raiz = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(directorio_raiz)
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import requests
-import re
 import time
+import requests
 from bs4 import BeautifulSoup
-from dao.producto_dao import ProductoDAO
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from webdriver_manager.chrome import ChromeDriverManager
+from scrapers.scraper_base import ScraperBase
 
-# ScraperLaptopBase - clase padre que define la logica comun de extraccion para laptops
-class ScraperLaptopBase:
-    # __init__ - inicializa variables de entorno y el DAO
-    def __init__(self, marcaDeseada):
-        # Atributo marcaDeseada: define si el bot buscara 'Asus' o 'Lenovo'
-        self.marcaDeseada = marcaDeseada 
-        self.headers = {'User-Agent': 'Mozilla/5.0'}
-        self.dao = ProductoDAO()
 
-    # extraerSpecsDeTexto - analiza un string para deducir RAM, CPU y Almacenamiento
-    def extraerSpecsDeTexto(self, tituloProducto):
-        specs = {
-            "ramGb": 8, # valor por defecto
-            "almacenamientoGb": 256, # valor por defecto
-            "cpuModelo": "Desconocido",
-            "gpuModelo": "Integrada"
-        }
-        
-        tituloLower = tituloProducto.lower()
-        
-        # extraemos la RAM buscando el patron "16gb" o "16 gb"
-        matchRam = re.search(r'(\d+)\s*gb\s*ram?', tituloLower)
-        if matchRam:
-            specs["ramGb"] = int(matchRam.group(1))
+class MercadoLibreScraper(ScraperBase):
+    """Scraper de precios y specs básicas desde MercadoLibre Argentina."""
 
-        # extraemos el CPU buscando palabras clave
-        if "ryzen 5" in tituloLower: specs["cpuModelo"] = "AMD Ryzen 5"
-        elif "ryzen 7" in tituloLower: specs["cpuModelo"] = "AMD Ryzen 7"
-        elif "core i5" in tituloLower: specs["cpuModelo"] = "Intel Core i5"
-        elif "core i7" in tituloLower: specs["cpuModelo"] = "Intel Core i7"
+    TIENDA = "Mercado Libre"
 
-        return specs
-
-# MercadoLibreScraper - Actualizado con Selenium para evadir bloqueos JS
-class MercadoLibreScraper(ScraperLaptopBase):
     def ejecutarScraping(self):
-        url = f"https://listado.mercadolibre.com.ar/computacion/laptops-accesorios/notebooks/{self.marcaDeseada.lower()}"
-        
-        print(f"   [Sistema] Abriendo navegador fantasma para buscar {self.marcaDeseada}...")
-        
-        # 1. Configurar el navegador Chrome en modo "Incógnito/Fantasma"
-        opciones = Options()
-        opciones.add_argument('--headless') # Ejecuta Chrome sin abrir la ventana visible
-        opciones.add_argument('--disable-gpu')
-        opciones.add_argument('--no-sandbox')
-        opciones.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-        
-        # 2. Inicializar el driver
-        servicio = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=servicio, options=opciones)
-        
+        url = f"https://listado.mercadolibre.com.ar/computacion/laptops-accesorios/notebooks/{self.marca.lower()}"
+        print(f"  [ML] Buscando '{self.marca}' en {url}")
+
+        driver = self._crearDriver()
         try:
-            # 3. Entrar a la página
             driver.get(url)
-            
-            # 4. LA MAGIA: Esperamos 5 segundos a que Mercado Libre ejecute su validación JS
-            print("   [Sistema] Esperando a que se resuelva el desafío de seguridad de ML...")
-            time.sleep(5) 
-            
-            # 5. Ahora sí, le pasamos el HTML ya renderizado a BeautifulSoup
+            print("  [ML] Esperando renderizado de seguridad...")
+            time.sleep(5)
+
             sopa = BeautifulSoup(driver.page_source, 'lxml')
-            productosHtml = sopa.find_all('li', class_='ui-search-layout__item')
-            
-            print(f"   [Debug] Cantidad de productos encontrados reales: {len(productosHtml)}")
-            
-            if not productosHtml:
-                print("   [Error] No se encontraron productos. ML podría haber cambiado la estructura o el bloqueo es más fuerte.")
+            items = sopa.find_all('li', class_='ui-search-layout__item')
+            print(f"  [ML] {len(items)} productos encontrados.")
+
+            if not items:
+                print("  [ML] Sin resultados. ML puede haber cambiado la estructura HTML.")
                 return
 
-            for item in productosHtml[:5]:
+            for item in items[:10]:
                 try:
-                    # FIX 1: Búsqueda del título más agresiva. Buscamos cualquier h2 o h3 dentro de la caja.
                     titulo_tag = item.find('h2') or item.find('h3')
-                    if not titulo_tag: 
-                        print("   [Debug] Tarjeta ignorada: No se detectó un título válido.")
+                    if not titulo_tag:
                         continue
                     modelo = titulo_tag.text.strip()
-                    
-                    # FIX 2: Búsqueda del precio (ML usa 'andes-money-amount__fraction' casi siempre, pero por las dudas verificamos)
+
                     precio_tag = item.find('span', class_='andes-money-amount__fraction')
                     if not precio_tag:
-                        print(f"   [Debug] Tarjeta ignorada: No se detectó el precio para {modelo}.")
                         continue
-                    precioTexto = precio_tag.text.replace('.', '')
-                    precioActual = float(precioTexto)
-                    
-                    # FIX 3: Buscamos el primer enlace de la tarjeta directamente por su etiqueta 'a'
+                    precio = float(precio_tag.text.replace('.', '').replace(',', '.'))
+
                     enlace_tag = item.find('a')
-                    urlVenta = enlace_tag['href'] if enlace_tag and 'href' in enlace_tag.attrs else ""
-                    
-                    print(f"   [Debug] ¡Encontrado! Guardando en BD: {modelo} - ${precioActual}")
-                    
-                    # Extracción de specs y guardado
+                    urlVenta = enlace_tag['href'] if enlace_tag else ""
+
+                    # Imagen del producto (ML usa data-src para lazy loading)
+                    img_tag = item.find('img', class_='ui-search-result-image__element') or item.find('img')
+                    imgUrl = ""
+                    if img_tag:
+                        imgUrl = img_tag.get('data-src') or img_tag.get('src', '')
+                        if not imgUrl.startswith('http'):
+                            imgUrl = ""
+
                     specs = self.extraerSpecsDeTexto(modelo)
-                    
                     self.dao.upsertLaptop(
-                        modelo, "", self.marcaDeseada, 1.8, 15.6, 
-                        144 if "gamer" in modelo.lower() else 60, 50, 
-                        specs["cpuModelo"], specs["gpuModelo"], specs["ramGb"], specs["almacenamientoGb"],
-                        precioActual, urlVenta, "Mercado Libre"
+                        modelo, imgUrl, self.marca,
+                        1.8, 15.6,
+                        144 if "gamer" in modelo.lower() else 60,
+                        50,
+                        specs["cpuModelo"], specs["gpuModelo"],
+                        specs["ramGb"], specs["almacenamientoGb"],
+                        precio, urlVenta, self.TIENDA
                     )
+                    print(f"  [ML] Guardado: {modelo[:60]} — ${precio}")
+                    self._esperar(0.5, 1.5)
+
                 except Exception as e:
-                    print(f"   [Debug] Error extrayendo el producto: {e}")
-                    
+                    print(f"  [ML] Error en producto: {e}")
+
         finally:
-            # 6. Siempre, SIEMPRE cerrar el navegador al terminar para no consumir toda tu RAM
             driver.quit()
 
-if __name__ == "__main__":
-    print("/// Iniciando Motor de Scraping TechMatch ///")
-    
-    # 1. Instanciamos y ejecutamos el bot para ASUS
-    print("-> Buscando laptops ASUS en Mercado Libre...")
-    botAsus = MercadoLibreScraper("Asus")
-    botAsus.ejecutarScraping()
-    
-    # 2. Instanciamos y ejecutamos el bot para LENOVO
-    print("-> Buscando laptops LENOVO en Mercado Libre...")
-    botLenovo = MercadoLibreScraper("Lenovo")
-    botLenovo.ejecutarScraping()
-    
-    print("/// Extracción y Guardado Finalizado Exitosamente ///")
+
+class CompraGamerScraper(ScraperBase):
+    """Scraper de precios desde Compra Gamer (compragamer.com)."""
+
+    TIENDA = "Compra Gamer"
+    # URL del listado de notebooks en Compra Gamer
+    URL_BASE = "https://www.compragamer.com/?categoria=5"
+
+    def ejecutarScraping(self):
+        print(f"  [CG] Buscando '{self.marca}' en Compra Gamer...")
+
+        driver = self._crearDriver()
+        try:
+            driver.get(self.URL_BASE)
+            print("  [CG] Esperando carga del sitio...")
+            time.sleep(4)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+
+            # Compra Gamer lista productos en elementos con clase 'contenedorPublicacion'
+            items = sopa.find_all('div', class_='contenedorPublicacion')
+
+            if not items:
+                # Fallback: intentar con clases alternativas que Compra Gamer suele usar
+                items = sopa.find_all('div', class_=lambda c: c and 'producto' in c.lower())
+
+            print(f"  [CG] {len(items)} productos encontrados.")
+
+            if not items:
+                print("  [CG] Sin resultados. Compra Gamer puede haber cambiado la estructura HTML.")
+                return
+
+            for item in items[:10]:
+                try:
+                    # Nombre del producto
+                    nombre_tag = (
+                        item.find('p', class_='nombre') or
+                        item.find('h3') or
+                        item.find('span', class_='nombreProducto')
+                    )
+                    if not nombre_tag:
+                        continue
+                    modelo = nombre_tag.text.strip()
+
+                    # Filtrar por marca deseada
+                    if self.marca.lower() not in modelo.lower():
+                        continue
+
+                    # Precio
+                    precio_tag = (
+                        item.find('p', class_='precio') or
+                        item.find('span', class_='precio') or
+                        item.find('div', class_='precio')
+                    )
+                    if not precio_tag:
+                        continue
+                    precioTexto = precio_tag.text.strip().replace('$', '').replace('.', '').replace(',', '.').strip()
+                    precio = float(''.join(c for c in precioTexto if c.isdigit() or c == '.'))
+
+                    # URL del producto
+                    enlace_tag = item.find('a')
+                    urlVenta = f"https://www.compragamer.com{enlace_tag['href']}" if enlace_tag and enlace_tag.get('href', '').startswith('/') else (enlace_tag['href'] if enlace_tag else "")
+
+                    specs = self.extraerSpecsDeTexto(modelo)
+                    self.dao.upsertLaptop(
+                        modelo, "", self.marca,
+                        1.8, 15.6,
+                        144 if "gamer" in modelo.lower() else 60,
+                        50,
+                        specs["cpuModelo"], specs["gpuModelo"],
+                        specs["ramGb"], specs["almacenamientoGb"],
+                        precio, urlVenta, self.TIENDA
+                    )
+                    print(f"  [CG] Guardado: {modelo[:60]} — ${precio}")
+                    self._esperar(0.5, 1.5)
+
+                except Exception as e:
+                    print(f"  [CG] Error en producto: {e}")
+
+        finally:
+            driver.quit()

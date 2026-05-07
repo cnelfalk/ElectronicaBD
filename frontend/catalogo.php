@@ -79,7 +79,7 @@
         </div>
     </div>
 
-    <!-- Script principal -->
+    <script src="assets/js/api.js"></script>
     <script src="assets/js/catalogo.js"></script>
 </body>
 </html>

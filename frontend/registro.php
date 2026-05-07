@@ -53,9 +53,8 @@
         </div>
     </div>
 
+    <script src="assets/js/api.js"></script>
     <script>
-        const API_URL = 'http://100.82.23.52:5000/api';
-
         // Si ya está logueado, redirigir directo al catálogo
         if (localStorage.getItem('techmatch_usuario')) {
             window.location.href = 'catalogo.php';
@@ -111,6 +110,7 @@
                 }
 
             } catch (error) {
+                console.error('Error en registro:', error);
                 alertaError.textContent = 'No se pudo conectar con el servidor. Verificá que Flask esté corriendo.';
                 alertaError.classList.remove('d-none');
             } finally {

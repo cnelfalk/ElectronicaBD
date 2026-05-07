@@ -1,0 +1,152 @@
+/* ── Variables ── */
+:root {
+    --color-primario: #0d6efd;
+    --color-fondo: #f0f2f5;
+    --color-card: #ffffff;
+    --color-texto-muted: #6c757d;
+    --radio-card: 12px;
+    --sombra-card: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --sombra-card-hover: 0 6px 20px rgba(0, 0, 0, 0.14);
+}
+
+/* ── Base ── */
+body {
+    background-color: var(--color-fondo);
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: #212529;
+}
+
+/* ── Navbar ── */
+.navbar {
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.navbar-brand {
+    font-size: 1.4rem;
+    letter-spacing: 0.5px;
+    color: #fff !important;
+}
+
+/* ── Cards de productos ── */
+.card {
+    border: none;
+    border-radius: var(--radio-card);
+    box-shadow: var(--sombra-card);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--sombra-card-hover);
+}
+
+.card-img-top {
+    border-radius: var(--radio-card) var(--radio-card) 0 0;
+    background-color: #f8f9fa;
+    object-fit: contain;
+    height: 160px;
+    padding: 1rem;
+}
+
+.card-img-placeholder {
+    border-radius: var(--radio-card) var(--radio-card) 0 0;
+    overflow: hidden;
+}
+
+.card-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+/* ── Badges de categoría ── */
+.badge-categoria {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.badge.bg-secondary {
+    background-color: #e9ecef !important;
+    color: #495057 !important;
+}
+
+/* Colores por categoría */
+.badge-cpu    { background-color: #cfe2ff; color: #084298; }
+.badge-gpu    { background-color: #d1e7dd; color: #0a3622; }
+.badge-ram    { background-color: #fff3cd; color: #664d03; }
+.badge-laptop { background-color: #f8d7da; color: #58151c; }
+
+/* ── Panel de filtros ── */
+.card-header.bg-primary {
+    border-radius: var(--radio-card) var(--radio-card) 0 0 !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--color-primario);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* ── Botones de acción en cards ── */
+.btn-comparar {
+    font-size: 0.8rem;
+}
+
+.btn-favorito {
+    font-size: 0.8rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.btn-favorito:hover {
+    background-color: #fff0f3;
+    border-color: #f5c2c7;
+}
+
+/* ── Precio en cards ── */
+.precio-producto {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-primario);
+}
+
+/* ── Formularios de login y registro ── */
+.card.shadow-sm {
+    border-radius: var(--radio-card);
+    box-shadow: var(--sombra-card) !important;
+}
+
+.card.shadow-sm .card-body {
+    padding: 2rem !important;
+}
+
+.card-title {
+    font-weight: 700;
+    color: #212529;
+}
+
+/* ── Estados vacíos y de carga ── */
+.estado-vacio {
+    padding: 3rem 1rem;
+    text-align: center;
+    color: var(--color-texto-muted);
+}
+
+.estado-vacio p {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .card-img-top {
+        height: 120px;
+    }
+
+    .navbar-brand {
+        font-size: 1.1rem;
+    }
+}

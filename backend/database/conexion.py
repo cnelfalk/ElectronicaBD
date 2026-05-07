@@ -17,10 +17,10 @@ class ConexionDB:
             try:
                 # Configuracion centralizada hacia la IP de Tailscale
                 cls._instancia = mysql.connector.connect(
-                    host="127.0.0.1",    
-                    user="fabrizio_tm",     
-                    password="admin",     
-                    database="techmatch",
+                    host=Config.DB_HOST,
+                    user=Config.DB_USER,
+                    password=Config.DB_PASSWORD,
+                    database=Config.DB_NAME,
                     port=3306
                 )
                 print("// Conexión establecida con el servidor central de BD")
@@ -28,18 +28,3 @@ class ConexionDB:
                 print(f"// Error crítico de conexión a la BD central: {e}")
         return cls._instancia
 
-    @staticmethod
-    # // _conectar - realiza la apertura del canal de datos con el servidor
-    def _conectar():
-        try:
-            conexion = mysql.connector.connect(
-                host=Config.DB_HOST,
-                user=Config.DB_USER,
-                password=Config.DB_PASSWORD,
-                database=Config.DB_NAME
-            )
-            if conexion.is_connected():
-                return conexion
-        except Error as e:
-            print(f"// errorConexion: {e}")
-            return None
