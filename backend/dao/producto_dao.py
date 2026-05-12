@@ -16,9 +16,9 @@ class ProductoDAO:
                 p.img_url, 
                 c.nombre_categoria as categoria, 
                 m.nombre_marca as marca
-            FROM Productos p
-            JOIN Categorias c ON p.id_categoria = c.id_categoria
-            JOIN Marcas m ON p.id_marca = m.id_marca
+            FROM productos p
+            JOIN categorias c ON p.id_categoria = c.id_categoria
+            JOIN marcas m ON p.id_marca = m.id_marca
             WHERE 1=1
         """
         parametrosSql = []
@@ -36,8 +36,8 @@ class ProductoDAO:
             query += """
                 AND p.id_producto IN (
                     SELECT pp.id_producto 
-                    FROM Productos_Perfiles pp 
-                    JOIN Perfiles_Uso pu ON pp.id_perfil = pu.id_perfil 
+                    FROM productos_perfiles pp 
+                    JOIN perfiles_uso pu ON pp.id_perfil = pu.id_perfil 
                     WHERE pu.nombre_perfil = %s
                 )
             """
@@ -60,8 +60,8 @@ class ProductoDAO:
                 p.modelo_producto as modelo,
                 l.peso_kg, l.tamanio_pantalla, l.tasa_refresco_hz, l.capacidad_bateria_wh,
                 l.cpu_modelo, l.gpu_modelo, l.ram_gb, l.almacenamiento_gb
-            FROM Productos p
-            JOIN Laptops l ON p.id_producto = l.id_producto
+            FROM productos p
+            JOIN laptops l ON p.id_producto = l.id_producto
             WHERE p.id_producto = %s
         """
         try:
@@ -74,44 +74,174 @@ class ProductoDAO:
             print(f"// errorObtenerLaptop: {e}")
             return None
 
-    # upsertLaptop - Inserta una laptop nueva en el supertipo, su especializacion y su tabla de precios.
-    def upsertLaptop(self, modelo, imgUrl, nombreMarca, pesoKg, tamanioPantalla, tasaRefrescoHz, 
-                     capacidadBateriaWh, cpuModelo, gpuModelo, ramGb, almacenamientoGb, 
+    # upsertLaptop - Inserta una laptop o actualiza su precio si el modelo ya existe en la BD.
+    def upsertLaptop(self, modelo, imgUrl, nombreMarca, pesoKg, tamanioPantalla, tasaRefrescoHz,
+                     capacidadBateriaWh, cpuModelo, gpuModelo, ramGb, almacenamientoGb,
                      precio, urlProducto, nombreTienda):
-        
+
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            # 1. Busqueda de Claves Foraneas (Catálogos)
-            cursor.execute("SELECT id_marca FROM Marcas WHERE nombre_marca = %s", (nombreMarca,))
-            idMarca = cursor.fetchone()['id_marca']
-            
-            cursor.execute("SELECT id_categoria FROM Categorias WHERE nombre_categoria = 'Laptop'")
+            # Verificar si el modelo ya existe para evitar duplicados
+            cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
+            existente = cursor.fetchone()
+
+            if existente:
+                idProducto = existente['id_producto']
+                # Actualizar imagen si el producto no tenía una y ahora sí llegó
+                if imgUrl:
+                    cursor.execute(
+                        "UPDATE productos SET img_url = %s WHERE id_producto = %s AND (img_url = '' OR img_url IS NULL)",
+                        (imgUrl, idProducto)
+                    )
+                if precio > 0:
+                    cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                    tiendaRow = cursor.fetchone()
+                    if tiendaRow:
+                        cursor.execute("""
+                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                            VALUES (%s, %s, %s, %s, NOW())
+                            ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
+                        """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
+                        self.conexion.commit()
+                return
+
+            # Producto nuevo: inserción completa
+            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
+            marcaRow = cursor.fetchone()
+            if not marcaRow:
+                print(f"// upsertLaptop: marca '{nombreMarca}' no encontrada en BD. Salteando.")
+                return
+            idMarca = marcaRow['id_marca']
+
+            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = 'Laptop'")
             idCategoria = cursor.fetchone()['id_categoria']
 
-            # 2. Insercion en Supertipo (Productos)
-            queryProd = "INSERT INTO Productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)"
-            cursor.execute(queryProd, (modelo, imgUrl, idMarca, idCategoria))
-            idProductoGenerado = cursor.lastrowid 
+            cursor.execute(
+                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                (modelo, imgUrl, idMarca, idCategoria)
+            )
+            idProductoGenerado = cursor.lastrowid
 
-            # 3. Insercion en Especializacion (Laptops) - Incluye los nuevos campos de rendimiento
-            queryLaptop = """
-                INSERT INTO Laptops (peso_kg, tamanio_pantalla, tasa_refresco_hz, capacidad_bateria_wh, 
-                                     cpu_modelo, gpu_modelo, ram_gb, almacenamiento_gb, id_producto) 
+            cursor.execute("""
+                INSERT INTO laptops (peso_kg, tamanio_pantalla, tasa_refresco_hz, capacidad_bateria_wh,
+                                     cpu_modelo, gpu_modelo, ram_gb, almacenamiento_gb, id_producto)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            cursor.execute(queryLaptop, (pesoKg, tamanioPantalla, tasaRefrescoHz, capacidadBateriaWh, 
-                                         cpuModelo, gpuModelo, ramGb, almacenamientoGb, idProductoGenerado))
+            """, (pesoKg, tamanioPantalla, tasaRefrescoHz, capacidadBateriaWh,
+                  cpuModelo, gpuModelo, ramGb, almacenamientoGb, idProductoGenerado))
 
-            # 4. Insercion de la relacion de venta (N:M)
-            cursor.execute("SELECT id_tienda FROM Tiendas WHERE nombre_tienda = %s", (nombreTienda,))
-            idTienda = cursor.fetchone()['id_tienda']
-            
-            queryPrecio = "INSERT INTO Se_Vende_En (id_producto, id_tienda, precio, url_producto, fec_actualizacion) VALUES (%s, %s, %s, %s, NOW())"
-            cursor.execute(queryPrecio, (idProductoGenerado, idTienda, precio, urlProducto))
+            if precio > 0:
+                cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                tiendaRow = cursor.fetchone()
+                if tiendaRow:
+                    cursor.execute("""
+                        INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, (idProductoGenerado, tiendaRow['id_tienda'], precio, urlProducto))
 
-            self.conexion.commit() # Si todo sale bien, guardamos los cambios
+            self.conexion.commit()
+
         except Exception as e:
-            self.conexion.rollback() # Si falla cualquier INSERT, revertimos TODO para evitar datos corruptos
+            self.conexion.rollback()
             print(f"// errorUpsertLaptop: {e}")
+        finally:
+            cursor.close()
+
+    # upsertProductoRetail - Inserta o actualiza un producto desde un retailer (ML, CompraGamer).
+    # Solo guarda: modelo, imagen, precio y link de compra. NO crea specs técnicas falsas.
+    # Las specs reales las deben aportar los scrapers de fabricantes (ASUS, Lenovo).
+    def upsertProductoRetail(self, modelo, imgUrl, nombreMarca, nombreCategoria, precio, urlProducto, nombreTienda):
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            # Verificar si el modelo ya existe en la BD
+            cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
+            existente = cursor.fetchone()
+
+            if existente:
+                idProducto = existente['id_producto']
+                # Actualizar imagen si el producto no tenía una y ahora sí llegó
+                if imgUrl:
+                    cursor.execute(
+                        "UPDATE productos SET img_url = %s WHERE id_producto = %s AND (img_url = '' OR img_url IS NULL)",
+                        (imgUrl, idProducto)
+                    )
+            else:
+                # Producto nuevo: solo insertar el registro base (sin specs)
+                cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
+                marcaRow = cursor.fetchone()
+                if not marcaRow:
+                    print(f"// upsertProductoRetail: marca '{nombreMarca}' no encontrada en BD. Salteando.")
+                    return
+                idMarca = marcaRow['id_marca']
+
+                cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = %s", (nombreCategoria,))
+                categoriaRow = cursor.fetchone()
+                if not categoriaRow:
+                    print(f"// upsertProductoRetail: categoría '{nombreCategoria}' no encontrada en BD. Salteando.")
+                    return
+                idCategoria = categoriaRow['id_categoria']
+
+                cursor.execute(
+                    "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                    (modelo, imgUrl, idMarca, idCategoria)
+                )
+                idProducto = cursor.lastrowid
+
+            # Insertar o actualizar el precio en la tienda
+            if precio > 0:
+                cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                tiendaRow = cursor.fetchone()
+                if tiendaRow:
+                    cursor.execute("""
+                        INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                        VALUES (%s, %s, %s, %s, NOW())
+                        ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
+                    """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
+
+            self.conexion.commit()
+
+        except Exception as e:
+            self.conexion.rollback()
+            print(f"// errorUpsertProductoRetail: {e}")
+        finally:
+            cursor.close()
+
+    # upsertCPU - Inserta un procesador o lo saltea si el modelo ya existe.
+    def upsertCPU(self, modelo, nucleos, hilos, frecBase, frecTurbo, tdp, urlReferencia):
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
+            if cursor.fetchone():
+                return
+
+            nombreMarca = "AMD" if "AMD" in modelo or "Ryzen" in modelo else "Intel"
+            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
+            marcaRow = cursor.fetchone()
+            if not marcaRow:
+                print(f"// upsertCPU: marca '{nombreMarca}' no encontrada en BD. Salteando.")
+                return
+            idMarca = marcaRow['id_marca']
+
+            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = 'CPU'")
+            categoriaRow = cursor.fetchone()
+            if not categoriaRow:
+                return
+            idCategoria = categoriaRow['id_categoria']
+
+            cursor.execute(
+                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                (modelo, "", idMarca, idCategoria)
+            )
+            idProducto = cursor.lastrowid
+
+            cursor.execute("""
+                INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (idProducto, nucleos, hilos, frecBase, frecTurbo, tdp))
+
+            self.conexion.commit()
+
+        except Exception as e:
+            self.conexion.rollback()
+            print(f"// errorUpsertCPU: {e}")
         finally:
             cursor.close()

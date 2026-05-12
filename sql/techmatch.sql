@@ -44,9 +44,9 @@ DEFAULT CHARACTER SET = utf8mb3;
 -- Table `techmatch`.`productos`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`productos` (
-  `id_producto` INT NOT NULL,
-  `modelo_producto` VARCHAR(150) NULL DEFAULT NULL,
-  `img_url` VARCHAR(500) NULL DEFAULT NULL,
+  `id_producto` INT NOT NULL AUTO_INCREMENT,
+  `modelo_producto` VARCHAR(500) NULL DEFAULT NULL,
+  `img_url` VARCHAR(1000) NULL DEFAULT NULL,
   `id_marca` INT NOT NULL,
   `id_categoria` INT NOT NULL,
   PRIMARY KEY (`id_producto`),

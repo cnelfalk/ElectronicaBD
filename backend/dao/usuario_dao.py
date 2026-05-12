@@ -1,7 +1,7 @@
 from database.conexion import ConexionDB
 from modelos.usuario import Usuario
 
-# UsuarioDAO - gestiona las operaciones de base de datos para la entidad Usuarios
+# UsuarioDAO - gestiona las operaciones de base de datos para la entidad usuarios
 class UsuarioDAO:
     # __init__ - inicializa el DAO obteniendo la conexion unica a la base de datos
     def __init__(self):
@@ -10,7 +10,7 @@ class UsuarioDAO:
     # obtenerPorEmail - busca un usuario especifico utilizando su correo electronico
     def obtenerPorEmail(self, emailUsuario):
         # prepararConsulta - define el query SQL previniendo inyecciones SQL
-        query = "SELECT * FROM Usuarios WHERE email_usuario = %s"
+        query = "SELECT * FROM usuarios WHERE email_usuario = %s"
         cursor = self.conexion.cursor(dictionary=True)
         cursor.execute(query, (emailUsuario,))
         registro = cursor.fetchone()
@@ -30,7 +30,7 @@ class UsuarioDAO:
     # crearUsuario - inserta un nuevo registro de usuario en la base de datos
     def crearUsuario(self, usuario):
         # insertarRegistro - ejecuta el insert devolviendo el ID generado
-        query = "INSERT INTO Usuarios (nombre_usuario, email_usuario, contrasenia_usuario) VALUES (%s, %s, %s)"
+        query = "INSERT INTO usuarios (nombre_usuario, email_usuario, contrasenia_usuario) VALUES (%s, %s, %s)"
         cursor = self.conexion.cursor()
         
         try:

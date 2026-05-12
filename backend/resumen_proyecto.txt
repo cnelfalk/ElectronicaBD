@@ -1,0 +1,1600 @@
+
+============================================================
+RUTA: .\app.py
+ARCHIVO: app.py
+============================================================
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+from config import Config
+from servicios.auth_servicio import AuthServicio
+from servicios.producto_servicio import ProductoServicio
+from servicios.comparacion_servicio import ComparacionServicio
+
+# inicializarAplicacion - configura el servidor Flask
+app = Flask(__name__)
+app.config.from_object(Config)
+CORS(app)
+
+# instanciarServicio - creamos una instancia global del servicio de autenticacion
+authServicio = AuthServicio()
+# Instanciar el servicio globalmente
+productoServicio = ProductoServicio()
+comparacionServicio = ComparacionServicio()
+
+# registrarUsuarioEndpoint - recibe peticion POST desde PHP para registrar un usuario
+@app.route('/api/register', methods=['POST'])
+def registrarUsuarioEndpoint():
+    try:
+        # extraerDatos - obtiene el payload JSON enviado por el frontend
+        datos = request.get_json()
+        nombreUsuario = datos.get('nombreUsuario')
+        emailUsuario = datos.get('emailUsuario')
+        contraseniaPlana = datos.get('contraseniaUsuario')
+
+        # validacionBasica - asegurar que no lleguen campos vacios desde PHP
+        if not nombreUsuario or not emailUsuario or not contraseniaPlana:
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos'}), 400
+
+        # ejecutarRegistro - delega la logica al servicio
+        resultado = authServicio.registrarUsuario(nombreUsuario, emailUsuario, contraseniaPlana)
+        
+        # retornarRespuesta - devuelve 200 OK si es exitoso, o 400 Bad Request si falla
+        return jsonify(resultado), 200 if resultado['success'] else 400
+
+    except Exception as e:
+        # manejarErrorGlobal - atrapa excepciones no controladas
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# loginUsuarioEndpoint - recibe credenciales POST y devuelve estado de autenticacion
+@app.route('/api/login', methods=['POST'])
+def loginUsuarioEndpoint():
+    try:
+        datos = request.get_json()
+        emailUsuario = datos.get('emailUsuario')
+        contraseniaPlana = datos.get('contraseniaUsuario')
+
+        if not emailUsuario or not contraseniaPlana:
+            return jsonify({'success': False, 'mensaje': 'Faltan credenciales'}), 400
+
+        resultado = authServicio.autenticarUsuario(emailUsuario, contraseniaPlana)
+        
+        # retornarRespuesta - 200 OK o 401 Unauthorized si las credenciales son invalidas
+        return jsonify(resultado), 200 if resultado['success'] else 401
+
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# obtenerProductosEndpoint - ruta GET para consultar el catalogo
+@app.route('/api/productos', methods=['GET'])
+def obtenerProductosEndpoint():
+    try:
+        # extraerParametrosUrl - captura las variables enviadas por JS (ej: ?categoria=GPU)
+        categoria = request.args.get('categoria')
+        perfil = request.args.get('perfil')
+        busqueda = request.args.get('busqueda')
+
+        # delegarAlServicio - pasa los filtros al intermediario de negocio
+        resultado = productoServicio.listarProductos(categoria, perfil, busqueda)
+        
+        # retornarJson - envia el paquete al navegador
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# compararLaptopsEndpoint - Ruta GET para evaluar dos equipos
+@app.route('/api/comparar', methods=['GET'])
+def compararLaptopsEndpoint():
+    try:
+        # extraerParametros - Capturamos los IDs y el perfil desde la URL
+        # Usamos type=int para forzar que los IDs sean numeros y evitar errores de SQL
+        idProductoA = request.args.get('idA', type=int)
+        idProductoB = request.args.get('idB', type=int)
+        perfilUso = request.args.get('perfil', default='Uso General', type=str)
+
+        # validacionBasica - Comprobamos que el frontend haya enviado ambos IDs
+        if not idProductoA or not idProductoB:
+            return jsonify({
+                'success': False, 
+                'mensaje': 'Se requieren exactamente dos IDs (idA, idB) para comparar.'
+            }), 400
+
+        # delegarAlServicio - Enviamos los datos al cerebro matematico
+        resultado = comparacionServicio.generarRecomendacionLaptops(idProductoA, idProductoB, perfilUso)
+        
+        # verificarRespuesta - Si el servicio no encontro los IDs en la BD, devuelve un 404 Not Found
+        if not resultado.get('success'):
+            return jsonify(resultado), 404
+
+        # retornarJson - Si todo salio bien, devolvemos el veredicto completo
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        # atraparErrores - Si algo explota en Python, evitamos que el servidor se caiga
+        return jsonify({'success': False, 'mensaje': f'Error interno del servidor: {str(e)}'}), 500
+
+if __name__ == '__main__':
+    # host='0.0.0.0' permite que Flask sea visible en toda la red (incluído Tailscale)
+    app.run(debug=True, port=5000, host='0.0.0.0')
+
+
+============================================================
+RUTA: .\config.py
+ARCHIVO: config.py
+============================================================
+
+import os
+
+# // ClaseConfiguracion - centraliza los parametros del sistema
+class Config:
+    # // ClaveSecreta - utilizada para la seguridad de tokens y sesiones
+    SECRET_KEY = os.environ.get('SECRET_KEY') or 'techmatch_secret_key_2026'
+    
+    # // ConfiguracionBaseDeDatos - parametros para la conexion a MySQL en Laragon
+    DB_HOST = '100.82.23.52'
+    DB_USER = 'fabrizio_tm'
+    DB_PASSWORD = 'admin'
+    DB_NAME = 'techmatch'
+
+
+============================================================
+RUTA: .\Requerimientos.txt
+ARCHIVO: Requerimientos.txt
+============================================================
+
+Flask==3.0.3
+flask-cors==4.0.0
+mysql-connector-python==8.4.0
+bcrypt==4.2.0
+requests==2.32.3
+beautifulsoup4==4.12.3
+lxml==5.2.2
+selenium==4.21.0
+webdriver-manager==4.0.1
+
+
+
+============================================================
+RUTA: .\resumen_proyecto.txt
+ARCHIVO: resumen_proyecto.txt
+============================================================
+
+
+
+
+============================================================
+RUTA: .\run_bots.py
+ARCHIVO: run_bots.py
+============================================================
+
+"""
+Orquestador del motor de scraping de TechMatch.
+Ejecutar con: python run_bots.py
+"""
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+from scrapers.scrapers_especificaciones import MercadoLibreScraper, CompraGamerScraper
+from scrapers.scrapers_fabricantes import AsusScraperLaptops, LenovoScraperLaptops
+from scrapers.scrapers_componentes import AMDScraperCPU, IntelScraperCPU
+
+
+def ejecutarBot(nombre, bot):
+    print(f"\n{'='*55}")
+    print(f"  INICIANDO: {nombre}")
+    print(f"{'='*55}")
+    try:
+        bot.ejecutarScraping()
+        print(f"  [OK] {nombre} finalizado.")
+    except Exception as e:
+        print(f"  [ERROR] {nombre} falló: {e}")
+        print("  El resto de los bots continuará igual.")
+
+
+if __name__ == "__main__":
+    print("\n" + "="*55)
+    print("   MOTOR DE SCRAPING TECHMATCH")
+    print("="*55)
+
+    # ── Retailers (precios) ──────────────────────────────
+    ejecutarBot("MercadoLibre — ASUS",   MercadoLibreScraper("Asus"))
+    ejecutarBot("MercadoLibre — LENOVO", MercadoLibreScraper("Lenovo"))
+    ejecutarBot("Compra Gamer — ASUS",   CompraGamerScraper("Asus"))
+    ejecutarBot("Compra Gamer — LENOVO", CompraGamerScraper("Lenovo"))
+
+    # ── Fabricantes de laptops (specs) ───────────────────
+    ejecutarBot("ASUS Oficial",   AsusScraperLaptops())
+    ejecutarBot("LENOVO Oficial", LenovoScraperLaptops())
+
+    # ── Fabricantes de componentes (specs CPUs) ──────────
+    ejecutarBot("AMD — Procesadores",   AMDScraperCPU())
+    ejecutarBot("Intel — Procesadores", IntelScraperCPU())
+
+    print("\n" + "="*55)
+    print("   SCRAPING COMPLETO")
+    print("="*55 + "\n")
+
+
+
+============================================================
+RUTA: .\volcar_proyecto.py
+ARCHIVO: volcar_proyecto.py
+============================================================
+
+import os
+
+def volcar_contenido_a_txt(ruta_raiz, archivo_salida):
+    # Extensiones que queremos ignorar (archivos binarios, venv, etc.)
+    ignorar = {'.pyc', '.png', '.jpg', '.jpeg', '.gif', '.exe', '.bin', '.pdf', '.db'}
+    carpetas_ignorar = {'venv', '__pycache__', '.git', '.vscode', 'node_modules'}
+
+    with open(archivo_salida, 'w', encoding='utf-8') as f_salida:
+        # os.walk recorre carpetas y subcarpetas automáticamente
+        for raiz, carpetas, archivos in os.walk(ruta_raiz):
+            
+            # Filtrar carpetas a ignorar para no entrar en ellas
+            carpetas[:] = [d for d in carpetas if d not in carpetas_ignorar]
+
+            for nombre_archivo in archivos:
+                # Verificar extensión
+                _, ext = os.path.splitext(nombre_archivo)
+                if ext.lower() in ignorar:
+                    continue
+
+                ruta_completa = os.path.join(raiz, nombre_archivo)
+                
+                try:
+                    with open(ruta_completa, 'r', encoding='utf-8') as f_lectura:
+                        contenido = f_lectura.read()
+                        
+                    # Escribir encabezado y contenido en el .txt
+                    f_salida.write(f"\n{'='*60}\n")
+                    f_salida.write(f"RUTA: {ruta_completa}\n")
+                    f_salida.write(f"ARCHIVO: {nombre_archivo}\n")
+                    f_salida.write(f"{'='*60}\n\n")
+                    f_salida.write(contenido)
+                    f_salida.write("\n\n")
+                    
+                except Exception as e:
+                    f_salida.write(f"\n[ERROR leyendo {nombre_archivo}: {e}]\n")
+
+    print(f"¡Listo! Se ha generado el archivo: {archivo_salida}")
+
+if __name__ == "__main__":
+    # Usa '.' para la carpeta actual donde pongas el script
+    directorio_actual = "."
+    nombre_resultado = "resumen_proyecto.txt"
+    volcar_contenido_a_txt(directorio_actual, nombre_resultado)
+
+
+============================================================
+RUTA: .\dao\categoria_dao.py
+ARCHIVO: categoria_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\comparacion_dao.py
+ARCHIVO: comparacion_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\favorito_dao.py
+ARCHIVO: favorito_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\marca_dao.py
+ARCHIVO: marca_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\perfil_uso_dao.py
+ARCHIVO: perfil_uso_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\producto_dao.py
+ARCHIVO: producto_dao.py
+============================================================
+
+from database.conexion import ConexionDB
+
+# ProductoDAO - Capa exclusiva para comunicarse con MySQL. No contiene reglas de negocio.
+class ProductoDAO:
+    # __init__ - Instancia el Singleton de la base de datos para no saturar conexiones en Laragon.
+    def __init__(self):
+        self.conexion = ConexionDB.obtenerInstancia()
+
+    # obtenerCatalogoFiltrado - Construye consultas SQL dinamicas para la grilla del frontend.
+    # Atributos: categoria (str), perfil (str), busqueda (str)
+    def obtenerCatalogoFiltrado(self, categoria=None, perfil=None, busqueda=None):
+        query = """
+            SELECT 
+                p.id_producto, 
+                p.modelo_producto as modelo, 
+                p.img_url, 
+                c.nombre_categoria as categoria, 
+                m.nombre_marca as marca
+            FROM productos p
+            JOIN categorias c ON p.id_categoria = c.id_categoria
+            JOIN marcas m ON p.id_marca = m.id_marca
+            WHERE 1=1
+        """
+        parametrosSql = []
+
+        if categoria:
+            query += " AND c.nombre_categoria = %s"
+            parametrosSql.append(categoria)
+
+        if busqueda:
+            query += " AND p.modelo_producto LIKE %s"
+            parametrosSql.append(f"%{busqueda}%")
+
+        if perfil:
+            # Subconsulta para evitar duplicados al filtrar relaciones N:M
+            query += """
+                AND p.id_producto IN (
+                    SELECT pp.id_producto 
+                    FROM productos_perfiles pp 
+                    JOIN perfiles_uso pu ON pp.id_perfil = pu.id_perfil 
+                    WHERE pu.nombre_perfil = %s
+                )
+            """
+            parametrosSql.append(perfil)
+
+        try:
+            cursor = self.conexion.cursor(dictionary=True)
+            cursor.execute(query, tuple(parametrosSql))
+            resultados = cursor.fetchall()
+            cursor.close()
+            return resultados
+        except Exception as e:
+            print(f"// errorObtenerCatalogo: {e}")
+            return []
+
+    # obtenerLaptopPorId - Recupera todos los datos fisicos y de rendimiento de una laptop especifica.
+    def obtenerLaptopPorId(self, idProducto):
+        query = """
+            SELECT 
+                p.modelo_producto as modelo,
+                l.peso_kg, l.tamanio_pantalla, l.tasa_refresco_hz, l.capacidad_bateria_wh,
+                l.cpu_modelo, l.gpu_modelo, l.ram_gb, l.almacenamiento_gb
+            FROM productos p
+            JOIN laptops l ON p.id_producto = l.id_producto
+            WHERE p.id_producto = %s
+        """
+        try:
+            cursor = self.conexion.cursor(dictionary=True)
+            cursor.execute(query, (idProducto,))
+            resultado = cursor.fetchone()
+            cursor.close()
+            return resultado
+        except Exception as e:
+            print(f"// errorObtenerLaptop: {e}")
+            return None
+
+    # upsertLaptop - Inserta una laptop o actualiza su precio si el modelo ya existe en la BD.
+    def upsertLaptop(self, modelo, imgUrl, nombreMarca, pesoKg, tamanioPantalla, tasaRefrescoHz,
+                     capacidadBateriaWh, cpuModelo, gpuModelo, ramGb, almacenamientoGb,
+                     precio, urlProducto, nombreTienda):
+
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            # Verificar si el modelo ya existe para evitar duplicados
+            cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
+            existente = cursor.fetchone()
+
+            if existente:
+                idProducto = existente['id_producto']
+                # Actualizar imagen si el producto no tenía una y ahora sí llegó
+                if imgUrl:
+                    cursor.execute(
+                        "UPDATE productos SET img_url = %s WHERE id_producto = %s AND (img_url = '' OR img_url IS NULL)",
+                        (imgUrl, idProducto)
+                    )
+                if precio > 0:
+                    cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                    tiendaRow = cursor.fetchone()
+                    if tiendaRow:
+                        cursor.execute("""
+                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                            VALUES (%s, %s, %s, %s, NOW())
+                            ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
+                        """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
+                        self.conexion.commit()
+                return
+
+            # Producto nuevo: inserción completa
+            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
+            marcaRow = cursor.fetchone()
+            if not marcaRow:
+                print(f"// upsertLaptop: marca '{nombreMarca}' no encontrada en BD. Salteando.")
+                return
+            idMarca = marcaRow['id_marca']
+
+            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = 'Laptop'")
+            idCategoria = cursor.fetchone()['id_categoria']
+
+            cursor.execute(
+                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                (modelo, imgUrl, idMarca, idCategoria)
+            )
+            idProductoGenerado = cursor.lastrowid
+
+            cursor.execute("""
+                INSERT INTO laptops (peso_kg, tamanio_pantalla, tasa_refresco_hz, capacidad_bateria_wh,
+                                     cpu_modelo, gpu_modelo, ram_gb, almacenamiento_gb, id_producto)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (pesoKg, tamanioPantalla, tasaRefrescoHz, capacidadBateriaWh,
+                  cpuModelo, gpuModelo, ramGb, almacenamientoGb, idProductoGenerado))
+
+            if precio > 0:
+                cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                tiendaRow = cursor.fetchone()
+                if tiendaRow:
+                    cursor.execute("""
+                        INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, (idProductoGenerado, tiendaRow['id_tienda'], precio, urlProducto))
+
+            self.conexion.commit()
+
+        except Exception as e:
+            self.conexion.rollback()
+            print(f"// errorUpsertLaptop: {e}")
+        finally:
+            cursor.close()
+
+    # upsertCPU - Inserta un procesador o lo saltea si el modelo ya existe.
+    def upsertCPU(self, modelo, nucleos, hilos, frecBase, frecTurbo, tdp, urlReferencia):
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
+            if cursor.fetchone():
+                return
+
+            nombreMarca = "AMD" if "AMD" in modelo or "Ryzen" in modelo else "Intel"
+            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
+            marcaRow = cursor.fetchone()
+            if not marcaRow:
+                print(f"// upsertCPU: marca '{nombreMarca}' no encontrada en BD. Salteando.")
+                return
+            idMarca = marcaRow['id_marca']
+
+            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = 'CPU'")
+            categoriaRow = cursor.fetchone()
+            if not categoriaRow:
+                return
+            idCategoria = categoriaRow['id_categoria']
+
+            cursor.execute(
+                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                (modelo, "", idMarca, idCategoria)
+            )
+            idProducto = cursor.lastrowid
+
+            cursor.execute("""
+                INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (idProducto, nucleos, hilos, frecBase, frecTurbo, tdp))
+
+            self.conexion.commit()
+
+        except Exception as e:
+            self.conexion.rollback()
+            print(f"// errorUpsertCPU: {e}")
+        finally:
+            cursor.close()
+
+
+============================================================
+RUTA: .\dao\socket_dao.py
+ARCHIVO: socket_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\tienda_dao.py
+ARCHIVO: tienda_dao.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\dao\usuario_dao.py
+ARCHIVO: usuario_dao.py
+============================================================
+
+from database.conexion import ConexionDB
+from modelos.usuario import Usuario
+
+# UsuarioDAO - gestiona las operaciones de base de datos para la entidad Usuarios
+class UsuarioDAO:
+    # __init__ - inicializa el DAO obteniendo la conexion unica a la base de datos
+    def __init__(self):
+        self.conexion = ConexionDB.obtenerInstancia()
+
+    # obtenerPorEmail - busca un usuario especifico utilizando su correo electronico
+    def obtenerPorEmail(self, emailUsuario):
+        # prepararConsulta - define el query SQL previniendo inyecciones SQL
+        query = "SELECT * FROM usuarios WHERE email_usuario = %s"
+        cursor = self.conexion.cursor(dictionary=True)
+        cursor.execute(query, (emailUsuario,))
+        registro = cursor.fetchone()
+        cursor.close()
+
+        if registro:
+            # mapearObjeto - convierte el diccionario de BD en un objeto Usuario
+            return Usuario(
+                idUsuario=registro['id_usuario'],
+                nombreUsuario=registro['nombre_usuario'],
+                emailUsuario=registro['email_usuario'],
+                contraseniaUsuario=registro['contrasenia_usuario'],
+                fecRegistro=registro['fec_registro']
+            )
+        return None
+
+    # crearUsuario - inserta un nuevo registro de usuario en la base de datos
+    def crearUsuario(self, usuario):
+        # insertarRegistro - ejecuta el insert devolviendo el ID generado
+        query = "INSERT INTO usuarios (nombre_usuario, email_usuario, contrasenia_usuario) VALUES (%s, %s, %s)"
+        cursor = self.conexion.cursor()
+        
+        try:
+            valores = (usuario.nombreUsuario, usuario.emailUsuario, usuario.contraseniaUsuario)
+            cursor.execute(query, valores)
+            self.conexion.commit()
+            nuevoId = cursor.lastrowid
+            cursor.close()
+            return nuevoId
+        except Exception as e:
+            self.conexion.rollback()
+            print(f"// errorAlCrearUsuario: {e}")
+            return None
+
+
+============================================================
+RUTA: .\database\conexion.py
+ARCHIVO: conexion.py
+============================================================
+
+import mysql.connector
+from mysql.connector import Error
+from config import Config
+
+# // ClaseConexionDB - gestiona la conexion unica a la base de datos MySQL
+class ConexionDB:
+    _instancia = None
+
+    def __init__(self):
+        # // ValidarInstancia - evita la creacion de nuevas instancias manuales
+        if ConexionDB._instancia is not None:
+            raise Exception("Esta clase es un Singleton. Usa obtenerInstancia()")
+
+    @classmethod
+    def obtenerInstancia(cls):
+        if cls._instancia is None:
+            try:
+                # Configuracion centralizada hacia la IP de Tailscale
+                cls._instancia = mysql.connector.connect(
+                    host=Config.DB_HOST,    
+                    user=Config.DB_USER,     
+                    password=Config.DB_PASSWORD,     
+                    database=Config.DB_NAME,
+                    port=3306
+                )
+                print("// Conexión establecida con el servidor central de BD")
+            except Exception as e:
+                print(f"// Error crítico de conexión a la BD central: {e}")
+        return cls._instancia
+
+    
+
+
+============================================================
+RUTA: .\database\__init__.py
+ARCHIVO: __init__.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\almacenamiento.py
+ARCHIVO: almacenamiento.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\categoria.py
+ARCHIVO: categoria.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\comparacion_guardada.py
+ARCHIVO: comparacion_guardada.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\cpu.py
+ARCHIVO: cpu.py
+============================================================
+
+from modelos.producto import Producto
+
+# CPU - clase especializada para procesadores que hereda del supertipo Producto
+class CPU(Producto):
+    # __init__ - constructor que extiende los atributos base agregando especificaciones tecnicas
+    def __init__(self, idProducto, modeloProducto, imgUrl, urlOficial, idCategoria, idMarca, nucleos, hilos, frecuenciaBase, frecuenciaTurbo, tdp, idSocket):
+        # llamarConstructorPadre - inicializa los atributos heredados de la clase Producto
+        super().__init__(idProducto, modeloProducto, imgUrl, urlOficial, idCategoria, idMarca)
+        self.nucleos = nucleos
+        self.hilos = hilos
+        self.frecuenciaBase = frecuenciaBase
+        self.frecuenciaTurbo = frecuenciaTurbo
+        self.tdp = tdp
+        self.idSocket = idSocket
+
+
+============================================================
+RUTA: .\modelos\gpu.py
+ARCHIVO: gpu.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\laptop.py
+ARCHIVO: laptop.py
+============================================================
+
+from modelos.producto import Producto
+
+# Laptop - objeto compuesto que encapsula otros componentes de hardware en su interior
+class Laptop(Producto):
+    # __init__ - inicializa la laptop recibiendo instancias completas de los componentes internos
+    def __init__(self, idProducto, modeloProducto, imgUrl, urlOficial, idCategoria, idMarca, cpuObj, gpuObj, ramObj, almacenamientoObj, pesoKg, tamanioPantalla, tasaRefrescoHz, capacidadBateriaWh):
+        # llamarConstructorPadre - delega los datos generales a la superclase
+        super().__init__(idProducto, modeloProducto, imgUrl, urlOficial, idCategoria, idMarca)
+        self.cpu = cpuObj  
+        self.gpu = gpuObj  
+        self.ram = ramObj  
+        self.almacenamiento = almacenamientoObj 
+        self.pesoKg = pesoKg
+        self.tamanioPantalla = tamanioPantalla
+        self.tasaRefrescoHz = tasaRefrescoHz
+        self.capacidadBateriaWh = capacidadBateriaWh
+
+
+============================================================
+RUTA: .\modelos\marca.py
+ARCHIVO: marca.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\perfil_uso.py
+ARCHIVO: perfil_uso.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\placa_madre.py
+ARCHIVO: placa_madre.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\producto.py
+ARCHIVO: producto.py
+============================================================
+
+# Producto - clase base supertipo para todos los componentes del catalogo
+class Producto:
+    # __init__ - inicializa los atributos comunes que todo hardware debe tener
+    def __init__(self, idProducto, modeloProducto, imgUrl, urlOficial, idCategoria, idMarca):
+        self.idProducto = idProducto
+        self.modeloProducto = modeloProducto
+        self.imgUrl = imgUrl
+        self.urlOficial = urlOficial
+        self.idCategoria = idCategoria
+        self.idMarca = idMarca
+
+
+============================================================
+RUTA: .\modelos\producto_perfil.py
+ARCHIVO: producto_perfil.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\ram.py
+ARCHIVO: ram.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\socket.py
+ARCHIVO: socket.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\tienda.py
+ARCHIVO: tienda.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\modelos\usuario.py
+ARCHIVO: usuario.py
+============================================================
+
+# Usuario - representa a un usuario registrado en el sistema TechMatch
+class Usuario:
+    # __init__ - constructor de la clase para inicializar al usuario
+    def __init__(self, idUsuario, nombreUsuario, emailUsuario, contraseniaUsuario, fecRegistro=None):
+        self.idUsuario = idUsuario
+        self.nombreUsuario = nombreUsuario
+        self.emailUsuario = emailUsuario
+        self.contraseniaUsuario = contraseniaUsuario
+        self.fecRegistro = fecRegistro
+
+
+============================================================
+RUTA: .\modelos\__init__.py
+ARCHIVO: __init__.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\scrapers\scrapers_componentes.py
+ARCHIVO: scrapers_componentes.py
+============================================================
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import time
+from bs4 import BeautifulSoup
+from scrapers.scraper_base import ScraperBase
+
+
+class AMDScraperCPU(ScraperBase):
+    """
+    Scraper de especificaciones de procesadores AMD desde amd.com.
+    Fuente: https://www.amd.com/es/products/processors/laptop
+    Guarda CPUs con precio=0 (no son vendidos directamente por AMD).
+    """
+
+    URL = "https://www.amd.com/es/products/processors/laptop"
+
+    def __init__(self):
+        super().__init__("AMD")
+
+    def ejecutarScraping(self):
+        print(f"  [AMD] Accediendo al catálogo de CPUs: {self.URL}")
+        driver = self._crearDriver()
+        try:
+            driver.get(self.URL)
+            print("  [AMD] Esperando renderizado JS...")
+            time.sleep(6)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+
+            # AMD lista sus CPUs en filas de tabla o tarjetas con clase 'product-card'
+            items = (
+                sopa.find_all('tr', class_=lambda c: c and 'product' in c.lower()) or
+                sopa.find_all('div', class_=lambda c: c and 'product-card' in c.lower()) or
+                sopa.find_all('div', class_='field--type-entity-reference')
+            )
+
+            print(f"  [AMD] {len(items)} procesadores encontrados.")
+            if not items:
+                print("  [AMD] Sin resultados. AMD puede haber cambiado su estructura HTML.")
+                return
+
+            for item in items[:15]:
+                try:
+                    # Nombre del procesador
+                    nombre_tag = item.find('h3') or item.find('h4') or item.find('td', class_=lambda c: c and 'name' in c.lower())
+                    if not nombre_tag:
+                        continue
+                    nombre = nombre_tag.text.strip()
+                    if not any(k in nombre for k in ["Ryzen", "EPYC", "Athlon"]):
+                        continue
+
+                    modelo = f"AMD {nombre}" if "AMD" not in nombre else nombre
+
+                    # Extraer specs del texto completo del ítem
+                    texto = item.get_text(separator=" ")
+
+                    nucleos = self._extraerNumero(texto, r'(\d+)\s*núcleos?') or self._extraerNumero(texto, r'(\d+)\s*cores?') or 6
+                    hilos = self._extraerNumero(texto, r'(\d+)\s*hilos?') or self._extraerNumero(texto, r'(\d+)\s*threads?') or nucleos * 2
+                    frecBase = self._extraerDecimal(texto, r'(\d+[.,]\d+)\s*ghz') or 3.0
+                    tdp = self._extraerNumero(texto, r'(\d+)\s*w\b') or 65
+
+                    enlace_tag = item.find('a')
+                    urlCpu = f"https://www.amd.com{enlace_tag['href']}" if enlace_tag and enlace_tag.get('href', '').startswith('/') else self.URL
+
+                    self.dao.upsertCPU(modelo, nucleos, hilos, frecBase, frecBase + 1.0, tdp, urlCpu)
+                    print(f"  [AMD] Guardado: {modelo[:60]}")
+                    self._esperar()
+
+                except Exception as e:
+                    print(f"  [AMD] Error en procesador: {e}")
+
+        finally:
+            driver.quit()
+
+    def _extraerNumero(self, texto, patron):
+        import re
+        m = re.search(patron, texto, re.IGNORECASE)
+        return int(m.group(1)) if m else None
+
+    def _extraerDecimal(self, texto, patron):
+        import re
+        m = re.search(patron, texto, re.IGNORECASE)
+        return float(m.group(1).replace(',', '.')) if m else None
+
+
+class IntelScraperCPU(ScraperBase):
+    """
+    Scraper de especificaciones de procesadores Intel desde ark.intel.com.
+    Fuente: https://ark.intel.com/content/www/us/en/ark/search.html?q=core+i
+    Guarda CPUs con precio=0 (Intel no vende directamente al consumidor).
+    """
+
+    URL = "https://ark.intel.com/content/www/us/en/ark/search.html?q=core+i&s=t&OrderBy=Featured"
+
+    def __init__(self):
+        super().__init__("Intel")
+
+    def ejecutarScraping(self):
+        print(f"  [INTEL] Accediendo al catálogo ARK de Intel: {self.URL}")
+        driver = self._crearDriver()
+        try:
+            driver.get(self.URL)
+            print("  [INTEL] Esperando renderizado JS...")
+            time.sleep(7)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+
+            # ARK de Intel lista productos en tabla con clase 'result-list' o similar
+            items = (
+                sopa.find_all('div', class_='result-list-item') or
+                sopa.find_all('tr', class_=lambda c: c and 'result' in c.lower()) or
+                sopa.find_all('li', class_=lambda c: c and 'product' in c.lower())
+            )
+
+            print(f"  [INTEL] {len(items)} procesadores encontrados.")
+            if not items:
+                print("  [INTEL] Sin resultados. El ARK de Intel puede requerir ajuste de selectores.")
+                return
+
+            for item in items[:15]:
+                try:
+                    nombre_tag = item.find('h3') or item.find('a', class_=lambda c: c and 'product' in c.lower()) or item.find('td')
+                    if not nombre_tag:
+                        continue
+                    nombre = nombre_tag.text.strip()
+                    if "Core" not in nombre and "Xeon" not in nombre:
+                        continue
+
+                    modelo = f"Intel {nombre}" if "Intel" not in nombre else nombre
+
+                    texto = item.get_text(separator=" ")
+                    nucleos = self._extraerNumero(texto, r'(\d+)\s*(?:núcleos?|cores?)') or 4
+                    hilos = self._extraerNumero(texto, r'(\d+)\s*(?:hilos?|threads?)') or nucleos * 2
+                    frecBase = self._extraerDecimal(texto, r'(\d+[.,]\d+)\s*ghz') or 3.0
+                    tdp = self._extraerNumero(texto, r'(\d+)\s*w\b') or 65
+
+                    enlace_tag = item.find('a')
+                    urlCpu = f"https://ark.intel.com{enlace_tag['href']}" if enlace_tag and enlace_tag.get('href', '').startswith('/') else self.URL
+
+                    self.dao.upsertCPU(modelo, nucleos, hilos, frecBase, frecBase + 0.8, tdp, urlCpu)
+                    print(f"  [INTEL] Guardado: {modelo[:60]}")
+                    self._esperar()
+
+                except Exception as e:
+                    print(f"  [INTEL] Error en procesador: {e}")
+
+        finally:
+            driver.quit()
+
+    def _extraerNumero(self, texto, patron):
+        import re
+        m = re.search(patron, texto, re.IGNORECASE)
+        return int(m.group(1)) if m else None
+
+    def _extraerDecimal(self, texto, patron):
+        import re
+        m = re.search(patron, texto, re.IGNORECASE)
+        return float(m.group(1).replace(',', '.')) if m else None
+
+
+
+============================================================
+RUTA: .\scrapers\scrapers_especificaciones.py
+ARCHIVO: scrapers_especificaciones.py
+============================================================
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import time
+import requests
+from bs4 import BeautifulSoup
+from scrapers.scraper_base import ScraperBase
+
+
+class MercadoLibreScraper(ScraperBase):
+    """Scraper de precios y specs básicas desde MercadoLibre Argentina."""
+
+    TIENDA = "Mercado Libre"
+
+    def ejecutarScraping(self):
+        url = f"https://listado.mercadolibre.com.ar/computacion/laptops-accesorios/notebooks/{self.marca.lower()}"
+        print(f"  [ML] Buscando '{self.marca}' en {url}")
+
+        driver = self._crearDriver()
+        try:
+            driver.get(url)
+            print("  [ML] Esperando renderizado de seguridad...")
+            time.sleep(5)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+            items = sopa.find_all('li', class_='ui-search-layout__item')
+            print(f"  [ML] {len(items)} productos encontrados.")
+
+            if not items:
+                print("  [ML] Sin resultados. ML puede haber cambiado la estructura HTML.")
+                return
+
+            for item in items[:10]:
+                try:
+                    titulo_tag = item.find('h2') or item.find('h3')
+                    if not titulo_tag:
+                        continue
+                    modelo = titulo_tag.text.strip()
+
+                    precio_tag = item.find('span', class_='andes-money-amount__fraction')
+                    if not precio_tag:
+                        continue
+                    precio = float(precio_tag.text.replace('.', '').replace(',', '.'))
+
+                    enlace_tag = item.find('a')
+                    urlVenta = enlace_tag['href'] if enlace_tag else ""
+
+                    # Imagen del producto (ML usa data-src para lazy loading)
+                    img_tag = item.find('img', class_='ui-search-result-image__element') or item.find('img')
+                    imgUrl = ""
+                    if img_tag:
+                        imgUrl = img_tag.get('data-src') or img_tag.get('src', '')
+                        if not imgUrl.startswith('http'):
+                            imgUrl = ""
+
+                    specs = self.extraerSpecsDeTexto(modelo)
+                    self.dao.upsertLaptop(
+                        modelo, imgUrl, self.marca,
+                        1.8, 15.6,
+                        144 if "gamer" in modelo.lower() else 60,
+                        50,
+                        specs["cpuModelo"], specs["gpuModelo"],
+                        specs["ramGb"], specs["almacenamientoGb"],
+                        precio, urlVenta, self.TIENDA
+                    )
+                    print(f"  [ML] Guardado: {modelo[:60]} — ${precio}")
+                    self._esperar(0.5, 1.5)
+
+                except Exception as e:
+                    print(f"  [ML] Error en producto: {e}")
+
+        finally:
+            driver.quit()
+
+
+class CompraGamerScraper(ScraperBase):
+    """Scraper de precios desde Compra Gamer (compragamer.com)."""
+
+    TIENDA = "Compra Gamer"
+    # URL del listado de notebooks en Compra Gamer
+    URL_BASE = "https://www.compragamer.com/?categoria=5"
+
+    def ejecutarScraping(self):
+        print(f"  [CG] Buscando '{self.marca}' en Compra Gamer...")
+
+        driver = self._crearDriver()
+        try:
+            driver.get(self.URL_BASE)
+            print("  [CG] Esperando carga del sitio...")
+            time.sleep(4)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+
+            # Compra Gamer lista productos en elementos con clase 'contenedorPublicacion'
+            items = sopa.find_all('div', class_='contenedorPublicacion')
+
+            if not items:
+                # Fallback: intentar con clases alternativas que Compra Gamer suele usar
+                items = sopa.find_all('div', class_=lambda c: c and 'producto' in c.lower())
+
+            print(f"  [CG] {len(items)} productos encontrados.")
+
+            if not items:
+                print("  [CG] Sin resultados. Compra Gamer puede haber cambiado la estructura HTML.")
+                return
+
+            for item in items[:10]:
+                try:
+                    # Nombre del producto
+                    nombre_tag = (
+                        item.find('p', class_='nombre') or
+                        item.find('h3') or
+                        item.find('span', class_='nombreProducto')
+                    )
+                    if not nombre_tag:
+                        continue
+                    modelo = nombre_tag.text.strip()
+
+                    # Filtrar por marca deseada
+                    if self.marca.lower() not in modelo.lower():
+                        continue
+
+                    # Precio
+                    precio_tag = (
+                        item.find('p', class_='precio') or
+                        item.find('span', class_='precio') or
+                        item.find('div', class_='precio')
+                    )
+                    if not precio_tag:
+                        continue
+                    precioTexto = precio_tag.text.strip().replace('$', '').replace('.', '').replace(',', '.').strip()
+                    precio = float(''.join(c for c in precioTexto if c.isdigit() or c == '.'))
+
+                    # URL del producto
+                    enlace_tag = item.find('a')
+                    urlVenta = f"https://www.compragamer.com{enlace_tag['href']}" if enlace_tag and enlace_tag.get('href', '').startswith('/') else (enlace_tag['href'] if enlace_tag else "")
+
+                    specs = self.extraerSpecsDeTexto(modelo)
+                    self.dao.upsertLaptop(
+                        modelo, "", self.marca,
+                        1.8, 15.6,
+                        144 if "gamer" in modelo.lower() else 60,
+                        50,
+                        specs["cpuModelo"], specs["gpuModelo"],
+                        specs["ramGb"], specs["almacenamientoGb"],
+                        precio, urlVenta, self.TIENDA
+                    )
+                    print(f"  [CG] Guardado: {modelo[:60]} — ${precio}")
+                    self._esperar(0.5, 1.5)
+
+                except Exception as e:
+                    print(f"  [CG] Error en producto: {e}")
+
+        finally:
+            driver.quit()
+
+
+
+============================================================
+RUTA: .\scrapers\scrapers_fabricantes.py
+ARCHIVO: scrapers_fabricantes.py
+============================================================
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import time
+from bs4 import BeautifulSoup
+from scrapers.scraper_base import ScraperBase
+
+
+class AsusScraperLaptops(ScraperBase):
+    """
+    Scraper de especificaciones desde el sitio oficial de ASUS Argentina.
+    Fuente: https://www.asus.com/ar/laptops/
+    No extrae precios (ASUS redirige a retailers). Guarda precio=0.
+    """
+
+    URL = "https://www.asus.com/ar/laptops/"
+
+    def __init__(self):
+        super().__init__("Asus")
+
+    def ejecutarScraping(self):
+        print(f"  [ASUS] Accediendo al catálogo oficial: {self.URL}")
+        driver = self._crearDriver()
+        try:
+            driver.get(self.URL)
+            print("  [ASUS] Esperando renderizado JS...")
+            time.sleep(5)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+
+            # ASUS usa tarjetas de producto con clase 'ProductCard__wrapper'
+            items = sopa.find_all('div', class_=lambda c: c and 'ProductCard' in c)
+
+            if not items:
+                # Fallback: buscar por estructura genérica de tarjetas
+                items = sopa.find_all('div', class_=lambda c: c and 'product' in c.lower() and 'card' in c.lower())
+
+            print(f"  [ASUS] {len(items)} productos encontrados.")
+            if not items:
+                print("  [ASUS] Sin resultados. ASUS puede haber cambiado su estructura HTML.")
+                return
+
+            for item in items[:10]:
+                try:
+                    nombre_tag = item.find('h3') or item.find('h2') or item.find('p', class_=lambda c: c and 'name' in c.lower())
+                    if not nombre_tag:
+                        continue
+                    modelo = f"ASUS {nombre_tag.text.strip()}"
+
+                    # Intentar obtener specs desde el texto del card
+                    specs = self.extraerSpecsDeTexto(modelo)
+
+                    # Buscar specs específicas en el card si las expone
+                    specs_tags = item.find_all('li') or item.find_all('span', class_=lambda c: c and 'spec' in c.lower())
+                    specs_texto = " ".join(tag.text for tag in specs_tags)
+                    if specs_texto:
+                        specs_extra = self.extraerSpecsDeTexto(specs_texto)
+                        # Usar el valor del card si mejora el default
+                        if specs_extra["cpuModelo"] != "Desconocido":
+                            specs["cpuModelo"] = specs_extra["cpuModelo"]
+                        if specs_extra["ramGb"] != 8:
+                            specs["ramGb"] = specs_extra["ramGb"]
+
+                    enlace_tag = item.find('a')
+                    urlProducto = f"https://www.asus.com{enlace_tag['href']}" if enlace_tag and enlace_tag.get('href', '').startswith('/') else self.URL
+
+                    self.dao.upsertLaptop(
+                        modelo, "", self.marca,
+                        1.8, 15.6, 60, 50,
+                        specs["cpuModelo"], specs["gpuModelo"],
+                        specs["ramGb"], specs["almacenamientoGb"],
+                        0, urlProducto, "Asus Oficial"
+                    )
+                    print(f"  [ASUS] Guardado: {modelo[:60]}")
+                    self._esperar()
+
+                except Exception as e:
+                    print(f"  [ASUS] Error en producto: {e}")
+
+        finally:
+            driver.quit()
+
+
+class LenovoScraperLaptops(ScraperBase):
+    """
+    Scraper de especificaciones desde el sitio oficial de Lenovo Argentina.
+    Fuente: https://www.lenovo.com/ar/es/laptops/
+    No extrae precios (Lenovo AR redirige a retailers). Guarda precio=0.
+    """
+
+    URL = "https://www.lenovo.com/ar/es/laptops/"
+
+    def __init__(self):
+        super().__init__("Lenovo")
+
+    def ejecutarScraping(self):
+        print(f"  [LENOVO] Accediendo al catálogo oficial: {self.URL}")
+        driver = self._crearDriver()
+        try:
+            driver.get(self.URL)
+            print("  [LENOVO] Esperando renderizado JS...")
+            time.sleep(6)
+
+            sopa = BeautifulSoup(driver.page_source, 'lxml')
+
+            # Lenovo usa tarjetas con clase 'product-grid-card' o similar
+            items = (
+                sopa.find_all('div', class_='product-grid-card') or
+                sopa.find_all('div', class_=lambda c: c and 'product' in c.lower() and 'card' in c.lower()) or
+                sopa.find_all('article', class_=lambda c: c and 'product' in c.lower())
+            )
+
+            print(f"  [LENOVO] {len(items)} productos encontrados.")
+            if not items:
+                print("  [LENOVO] Sin resultados. Lenovo puede haber cambiado su estructura HTML.")
+                return
+
+            for item in items[:10]:
+                try:
+                    nombre_tag = (
+                        item.find('h3') or
+                        item.find('h2') or
+                        item.find('div', class_=lambda c: c and 'title' in c.lower())
+                    )
+                    if not nombre_tag:
+                        continue
+                    modelo = nombre_tag.text.strip()
+                    if "lenovo" not in modelo.lower():
+                        modelo = f"Lenovo {modelo}"
+
+                    specs_texto = item.get_text(separator=" ")
+                    specs = self.extraerSpecsDeTexto(specs_texto)
+
+                    enlace_tag = item.find('a')
+                    urlProducto = f"https://www.lenovo.com{enlace_tag['href']}" if enlace_tag and enlace_tag.get('href', '').startswith('/') else self.URL
+
+                    self.dao.upsertLaptop(
+                        modelo, "", self.marca,
+                        1.8, 15.6, 60, 50,
+                        specs["cpuModelo"], specs["gpuModelo"],
+                        specs["ramGb"], specs["almacenamientoGb"],
+                        0, urlProducto, "Lenovo Oficial"
+                    )
+                    print(f"  [LENOVO] Guardado: {modelo[:60]}")
+                    self._esperar()
+
+                except Exception as e:
+                    print(f"  [LENOVO] Error en producto: {e}")
+
+        finally:
+            driver.quit()
+
+
+
+============================================================
+RUTA: .\scrapers\scrapers_precios.py
+ARCHIVO: scrapers_precios.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\scrapers\scraper_base.py
+ARCHIVO: scraper_base.py
+============================================================
+
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+import re
+import time
+import random
+from abc import ABC, abstractmethod
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
+from dao.producto_dao import ProductoDAO
+
+
+class ScraperBase(ABC):
+    def __init__(self, marca):
+        self.marca = marca
+        self.userAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        self.headers = {'User-Agent': self.userAgent}
+        self.dao = ProductoDAO()
+
+    @abstractmethod
+    def ejecutarScraping(self):
+        pass
+
+    def _crearDriver(self):
+        opciones = Options()
+        opciones.add_argument('--headless')
+        opciones.add_argument('--disable-gpu')
+        opciones.add_argument('--no-sandbox')
+        opciones.add_argument('--disable-dev-shm-usage')
+        opciones.add_argument(f'user-agent={self.userAgent}')
+        servicio = Service(ChromeDriverManager().install())
+        return webdriver.Chrome(service=servicio, options=opciones)
+
+    def _esperar(self, minSeg=1, maxSeg=3):
+        time.sleep(random.uniform(minSeg, maxSeg))
+
+    def extraerSpecsDeTexto(self, titulo):
+        specs = {
+            "ramGb": 8,
+            "almacenamientoGb": 256,
+            "cpuModelo": "Desconocido",
+            "gpuModelo": "Integrada"
+        }
+
+        t = titulo.lower()
+
+        matchRam = re.search(r'(\d+)\s*gb\s*ram?', t)
+        if matchRam:
+            specs["ramGb"] = int(matchRam.group(1))
+
+        matchAlm = re.search(r'(\d+)\s*(gb|tb)\s*(ssd|hdd|nvme)', t)
+        if matchAlm:
+            valor = int(matchAlm.group(1))
+            specs["almacenamientoGb"] = valor * 1000 if matchAlm.group(2) == 'tb' else valor
+
+        if   "ryzen 9" in t: specs["cpuModelo"] = "AMD Ryzen 9"
+        elif "ryzen 7" in t: specs["cpuModelo"] = "AMD Ryzen 7"
+        elif "ryzen 5" in t: specs["cpuModelo"] = "AMD Ryzen 5"
+        elif "ryzen 3" in t: specs["cpuModelo"] = "AMD Ryzen 3"
+        elif "core i9" in t: specs["cpuModelo"] = "Intel Core i9"
+        elif "core i7" in t: specs["cpuModelo"] = "Intel Core i7"
+        elif "core i5" in t: specs["cpuModelo"] = "Intel Core i5"
+        elif "core i3" in t: specs["cpuModelo"] = "Intel Core i3"
+
+        if   "rtx 4090" in t: specs["gpuModelo"] = "NVIDIA RTX 4090"
+        elif "rtx 4080" in t: specs["gpuModelo"] = "NVIDIA RTX 4080"
+        elif "rtx 4070" in t: specs["gpuModelo"] = "NVIDIA RTX 4070"
+        elif "rtx 4060" in t: specs["gpuModelo"] = "NVIDIA RTX 4060"
+        elif "rtx 3080" in t: specs["gpuModelo"] = "NVIDIA RTX 3080"
+        elif "rtx 3070" in t: specs["gpuModelo"] = "NVIDIA RTX 3070"
+        elif "rtx 3060" in t: specs["gpuModelo"] = "NVIDIA RTX 3060"
+        elif "rx 7900"  in t: specs["gpuModelo"] = "AMD RX 7900"
+        elif "rx 7800"  in t: specs["gpuModelo"] = "AMD RX 7800"
+        elif "rx 7600"  in t: specs["gpuModelo"] = "AMD RX 7600"
+
+        return specs
+
+
+
+============================================================
+RUTA: .\servicios\auth_servicio.py
+ARCHIVO: auth_servicio.py
+============================================================
+
+import bcrypt
+from dao.usuario_dao import UsuarioDAO
+from modelos.usuario import Usuario
+
+# AuthServicio - gestiona la logica de negocio para el registro y login
+class AuthServicio:
+    # __init__ - inicializa el servicio instanciando su respectivo DAO
+    def __init__(self):
+        self.usuarioDao = UsuarioDAO()
+
+    # registrarUsuario - valida y cifra los datos antes de guardarlos en BD
+    def registrarUsuario(self, nombreUsuario, emailUsuario, contraseniaPlana):
+        # verificarDuplicado - comprueba si el correo ya esta registrado
+        usuarioExistente = self.usuarioDao.obtenerPorEmail(emailUsuario)
+        if usuarioExistente:
+            return {"success": False, "mensaje": "El correo ya está registrado"}
+
+        # generarHash - cifra la contraseña utilizando un salt de bcrypt
+        salt = bcrypt.gensalt()
+        contraseniaHasheada = bcrypt.hashpw(contraseniaPlana.encode('utf-8'), salt)
+        
+        # crearObjeto - instancia un nuevo usuario con la contraseña protegida (decodificada a string para MySQL)
+        nuevoUsuario = Usuario(None, nombreUsuario, emailUsuario, contraseniaHasheada.decode('utf-8'))
+        
+        # persistirDatos - delega la insercion al DAO
+        idGenerado = self.usuarioDao.crearUsuario(nuevoUsuario)
+        
+        if idGenerado:
+            return {"success": True, "mensaje": "Usuario registrado exitosamente"}
+        return {"success": False, "mensaje": "Error al registrar en la base de datos"}
+
+    # autenticarUsuario - verifica las credenciales para el inicio de sesion
+    def autenticarUsuario(self, emailUsuario, contraseniaPlana):
+        # buscarUsuario - recupera el registro completo desde la base de datos
+        usuario = self.usuarioDao.obtenerPorEmail(emailUsuario)
+        
+        if not usuario:
+            return {"success": False, "mensaje": "Credenciales inválidas"}
+
+        # compararHash - verifica si la contraseña plana coincide con el hash guardado
+        coincide = bcrypt.checkpw(contraseniaPlana.encode('utf-8'), usuario.contraseniaUsuario.encode('utf-8'))
+        
+        if coincide:
+            # omitimos la contrasena en la respuesta por seguridad
+            datosUsuario = {
+                "idUsuario": usuario.idUsuario,
+                "nombreUsuario": usuario.nombreUsuario,
+                "emailUsuario": usuario.emailUsuario
+            }
+            return {"success": True, "datos": datosUsuario}
+        
+        return {"success": False, "mensaje": "Credenciales inválidas"}
+
+
+============================================================
+RUTA: .\servicios\comparacion_servicio.py
+ARCHIVO: comparacion_servicio.py
+============================================================
+
+from dao.producto_dao import ProductoDAO
+
+# ComparacionServicio - Contiene la inteligencia de evaluacion y traduccion de especificaciones.
+class ComparacionServicio:
+    
+    # __init__ - Define el diccionario base para cuantificar el rendimiento de los procesadores.
+    def __init__(self):
+        self.productoDao = ProductoDAO()
+        
+        # Diccionario de Scoring: Transforma el texto sucio del scraper en un valor numerico duro.
+        self.puntajeCpu = {
+            "celeron": 15, "pentium": 20,
+            "ryzen 3": 40, "core i3": 40,
+            "ryzen 5": 70, "core i5": 70,
+            "ryzen 7": 90, "core i7": 90,
+            "ryzen 9": 100, "core i9": 100
+        }
+    
+    # _calcularPuntajeCpu - Busca coincidencias entre el nombre del CPU extraido y nuestro diccionario.
+    # Atributos: modeloCpu (str). Retorna: int (Puntaje)
+    def _calcularPuntajeCpu(self, modeloCpu):
+        if not modeloCpu: 
+            return 0
+        modeloLower = modeloCpu.lower()
+        for clave, puntaje in self.puntajeCpu.items():
+            if clave in modeloLower:
+                return puntaje
+        return 30 # Valor base si tiene un procesador antiguo o no reconocido
+
+    # generarRecomendacionLaptops - Metodo principal que orquesta la comparacion.
+    # Atributos: idProductoA (int), idProductoB (int), perfilUso (str)
+    def generarRecomendacionLaptops(self, idProductoA, idProductoB, perfilUso):
+        # 1. Traer los datos limpios desde la base de datos
+        laptopA = self.productoDao.obtenerLaptopPorId(idProductoA)
+        laptopB = self.productoDao.obtenerLaptopPorId(idProductoB)
+
+        # Si por algun motivo el ID no existe en la BD
+        if not laptopA or not laptopB:
+            return {"success": False, "mensaje": "Uno de los productos no existe o no es una Laptop."}
+
+        recomendacion = {
+            "success": True,
+            "datosA": laptopA,
+            "datosB": laptopB,
+            "ganador": None,
+            "motivo": "",
+            "puntajeA": 0,
+            "puntajeB": 0
+        }
+
+        # 2. Traducir textos a valores matematicos
+        rendimientoCpuA = self._calcularPuntajeCpu(laptopA['cpu_modelo'])
+        rendimientoCpuB = self._calcularPuntajeCpu(laptopB['cpu_modelo'])
+        
+        # 3. Algoritmo Condicional segun el Perfil de Uso elegido por el usuario
+        perfilLower = perfilUso.lower() if perfilUso else "general"
+
+        if perfilLower == 'desarrollo de software':
+            # Desarrollo prioriza fuertemente la RAM (maquinas virtuales, Docker) y CPU
+            recomendacion['puntajeA'] = (laptopA['ram_gb'] * 3) + (rendimientoCpuA * 2)
+            recomendacion['puntajeB'] = (laptopB['ram_gb'] * 3) + (rendimientoCpuB * 2)
+            
+        elif perfilLower in ['gaming', 'diseño']:
+            # Gaming/Diseño prioriza Tasa de Refresco, CPU y RAM.
+            # Nota: Al no tener benchmark de GPU exacto, usamos los Hz como factor multiplicador ligero.
+            bonoHzA = 15 if laptopA['tasa_refresco_hz'] > 60 else 0
+            bonoHzB = 15 if laptopB['tasa_refresco_hz'] > 60 else 0
+            
+            recomendacion['puntajeA'] = (laptopA['ram_gb'] * 2) + rendimientoCpuA + bonoHzA
+            recomendacion['puntajeB'] = (laptopB['ram_gb'] * 2) + rendimientoCpuB + bonoHzB
+
+        elif perfilLower == 'ofimatica':
+            # Ofimatica prioriza Bateria alta y Peso bajo, la RAM y CPU importan menos.
+            # Multiplicamos la bateria por 0.5 para normalizar y restamos el peso.
+            recomendacion['puntajeA'] = (laptopA['capacidad_bateria_wh'] * 0.5) - laptopA['peso_kg'] + (laptopA['ram_gb'] * 1.5)
+            recomendacion['puntajeB'] = (laptopB['capacidad_bateria_wh'] * 0.5) - laptopB['peso_kg'] + (laptopB['ram_gb'] * 1.5)
+            
+        else:
+            # Uso General: Equilibrio entre RAM y CPU
+            recomendacion['puntajeA'] = (laptopA['ram_gb'] * 2) + rendimientoCpuA
+            recomendacion['puntajeB'] = (laptopB['ram_gb'] * 2) + rendimientoCpuB
+
+        # 4. Determinar el Ganador y redactar la justificacion
+        if recomendacion['puntajeA'] > recomendacion['puntajeB']:
+            recomendacion['ganador'] = laptopA['modelo']
+            recomendacion['motivo'] = f"Para el perfil '{perfilUso}', {laptopA['modelo']} ofrece mejores prestaciones con su procesador {laptopA['cpu_modelo']} y {laptopA['ram_gb']}GB de RAM."
+        elif recomendacion['puntajeB'] > recomendacion['puntajeA']:
+            recomendacion['ganador'] = laptopB['modelo']
+            recomendacion['motivo'] = f"Para el perfil '{perfilUso}', {laptopB['modelo']} es la opcion superior gracias a sus {laptopB['ram_gb']}GB de RAM y CPU {laptopB['cpu_modelo']}."
+        else:
+            recomendacion['ganador'] = "Empate Técnico"
+            recomendacion['motivo'] = "Ambos equipos ofrecen capacidades idénticas para el uso solicitado. Te sugerimos guiarte por el diseño físico o el precio."
+
+        return recomendacion
+
+
+============================================================
+RUTA: .\servicios\favorito_servicio.py
+ARCHIVO: favorito_servicio.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\servicios\producto_servicio.py
+ARCHIVO: producto_servicio.py
+============================================================
+
+from dao.producto_dao import ProductoDAO
+
+# ProductoServicio - clase que procesa las reglas de negocio vinculadas al hardware
+class ProductoServicio:
+    # __init__ - inicializa instanciando el DAO necesario para extraer los datos
+    def __init__(self):
+        self.productoDao = ProductoDAO()
+
+    # listarProductos - metodo que orquesta la busqueda y prepara la respuesta
+    def listarProductos(self, categoria, perfil, busqueda):
+        # En el futuro, aqui podriamos agregar logica para calcular puntuaciones
+        # o formatear URLs de imagenes rotas antes de enviarlas al frontend
+        
+        # llamarAlDao - extrae la lista cruda desde la base de datos
+        productos = self.productoDao.obtenerCatalogoFiltrado(categoria, perfil, busqueda)
+        
+        # verificarResultados - estructura el JSON final
+        if productos:
+            return {"success": True, "data": productos, "total": len(productos)}
+        else:
+            return {"success": True, "data": [], "mensaje": "No se encontraron productos"}
+
+
+============================================================
+RUTA: .\servicios\_init_.py
+ARCHIVO: _init_.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\utils\normalizacion.py
+ARCHIVO: normalizacion.py
+============================================================
+
+
+
+
+============================================================
+RUTA: .\utils\validacion.py
+ARCHIVO: validacion.py
+============================================================
+
+
+

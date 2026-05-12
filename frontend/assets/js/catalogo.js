@@ -6,9 +6,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroPerfil = document.getElementById('filtroPerfil');
     const buscarNombre = document.getElementById('buscarNombre');
 
-    // URL base de nuestro backend Flask (Laragon)
-    const API_URL = 'http://100.82.23.52:5000/api';
-
     // Función principal para cargar productos
     async function cargarProductos() {
         // Mostrar estado de carga
@@ -61,12 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         productos.forEach(producto => {
+            const imgSrc = producto.img_url || '';
             // Crear el HTML de la tarjeta para cada producto
             const cardHTML = `
                 <div class="col-md-4 mb-4">
                     <div class="card h-100 shadow-sm">
-                        <!-- Imagen (usando un placeholder si no hay imagen en la BD) -->
-                        <img src="${producto.img_url || 'https://via.placeholder.com/150'}" class="card-img-top p-3" alt="${producto.modelo}" style="object-fit: contain; height: 150px;">
+                        ${imgSrc
+                            ? `<img src="${imgSrc}" class="card-img-top p-3" alt="${producto.modelo}" style="object-fit: contain; height: 150px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                               <div class="card-img-placeholder" style="display:none; height:150px;">${obtenerImagenSVG(producto.marca)}</div>`
+                            : `<div class="card-img-placeholder" style="height:150px;">${obtenerImagenSVG(producto.marca)}</div>`
+                        }
                         <div class="card-body d-flex flex-column">
                             <span class="badge bg-secondary mb-2 align-self-start">${producto.categoria}</span>
                             <h5 class="card-title text-truncate" title="${producto.modelo}">${producto.modelo}</h5>
@@ -77,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 <button class="btn btn-outline-primary btn-sm btn-comparar" data-id="${producto.id_producto}">
                                     Añadir a Comparar
                                 </button>
-                                <button class="btn btn-light btn-sm btn-favorito" data-id="${producto.id_producto}">
+                                <button class="btn btn-light btn-sm btn-favorito" data-id="${producto.id_producto}" onclick="guardarFavorito(this)">
                                     ❤️ Guardar
                                 </button>
                             </div>
@@ -114,3 +115,34 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') cargarProductos();
     });
 });
+
+function obtenerImagenSVG(marca) {
+    const colores = {
+        'Asus':   { bg: '#00539b', texto: '#ffffff' },
+        'Lenovo': { bg: '#e2231a', texto: '#ffffff' },
+        'Intel':  { bg: '#0071c5', texto: '#ffffff' },
+        'AMD':    { bg: '#ed1c24', texto: '#ffffff' },
+        'MSI':    { bg: '#d00000', texto: '#ffffff' },
+        'HP':     { bg: '#0096d6', texto: '#ffffff' },
+        'Dell':   { bg: '#007db8', texto: '#ffffff' },
+    };
+    const c = colores[marca] || { bg: '#6c757d', texto: '#ffffff' };
+    const inicial = marca ? marca[0].toUpperCase() : '?';
+    return `<div style="width:100%; height:100%; background:${c.bg}; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px 8px 0 0;">
+                <span style="color:${c.texto}; font-size:2.5rem; font-weight:700; font-family:sans-serif;">${inicial}</span>
+                <span style="color:${c.texto}; font-size:0.75rem; font-family:sans-serif; opacity:0.85;">${marca}</span>
+            </div>`;
+}
+
+function guardarFavorito(btn) {
+    const usuario = localStorage.getItem('techmatch_usuario');
+
+    if (!usuario) {
+        window.location.href = 'login.php?redirect=catalogo.php';
+        return;
+    }
+
+    // TODO: conectar con el endpoint de favoritos (Prioridad 3)
+    btn.textContent = '✅ Guardado';
+    btn.disabled = true;
+}
