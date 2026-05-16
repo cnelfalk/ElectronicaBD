@@ -1,18 +1,26 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-        <a class="navbar-brand fw-bold" href="catalogo.php">TechMatch</a>
+<nav class="tm-navbar">
+    <div class="tm-navbar-inner">
+        <a class="tm-logo" href="catalogo.php">
+            <div class="tm-logo-icon">T</div>
+            <span>TechMatch</span>
+        </a>
 
-        <div class="d-flex align-items-center gap-2">
+        <div class="tm-nav-links">
+            <a href="catalogo.php" class="tm-nav-link">Catálogo</a>
+            <a href="comparar.php" class="tm-nav-link">Comparar</a>
+        </div>
+
+        <div class="tm-nav-actions">
             <!-- Estado: no logueado -->
             <div id="nav-sin-sesion">
-                <a href="login.php" class="btn btn-outline-light btn-sm me-1">Iniciar Sesión</a>
-                <a href="registro.php" class="btn btn-primary btn-sm">Registrarse</a>
+                <a href="login.php" class="tm-btn tm-btn-ghost tm-btn-sm">Iniciar Sesión</a>
+                <a href="registro.php" class="tm-btn tm-btn-primary tm-btn-sm">Registrarse</a>
             </div>
 
             <!-- Estado: logueado (oculto hasta que JS lo muestre) -->
-            <div id="nav-con-sesion" style="display:none;" class="align-items-center gap-2">
-                <span class="text-light small" id="nav-nombre-usuario"></span>
-                <button class="btn btn-outline-light btn-sm" onclick="cerrarSesion()">Cerrar Sesión</button>
+            <div id="nav-con-sesion" style="display:none;" class="tm-nav-actions">
+                <span style="color: var(--tm-text-secondary); font-size: 0.85rem;" id="nav-nombre-usuario"></span>
+                <button class="tm-btn tm-btn-ghost tm-btn-sm" onclick="cerrarSesion()">Salir</button>
             </div>
         </div>
     </div>

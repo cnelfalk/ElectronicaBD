@@ -10,8 +10,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function cargarProductos() {
         // Mostrar estado de carga
         contenedorProductos.innerHTML = `
-            <div class="col-12 text-center py-5">
-                <div class="spinner-border text-primary" role="status"></div>
+            <div class="tm-loading">
+                <div class="tm-spinner"></div>
                 <p>Cargando catálogo...</p>
             </div>
         `;
@@ -25,17 +25,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const urlConFiltros = `${API_URL}/productos?${params.toString()}`;
 
         try {
-            // Realizar la petición HTTP al backend Flask
             const respuesta = await fetch(urlConFiltros);
 
-            // Si la respuesta no es OK (ej. 500 error del servidor)
             if (!respuesta.ok) {
                 throw new Error(`Error HTTP: ${respuesta.status}`);
             }
 
             const datosJson = await respuesta.json();
 
-            // Si el backend responde que fue exitoso
             if (datosJson.success) {
                 renderizarProductos(datosJson.data);
             } else {
@@ -44,96 +41,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
         } catch (error) {
             console.error('Error al conectar con la API:', error);
-            mostrarError('No se pudo conectar con el servidor. Verificá que Flask esté corriendo.');
+            mostrarError('No se pudo conectar con el servidor. Verificá que Flask esté corriendo en el puerto 5000.');
         }
     }
 
-    // Función para dibujar las tarjetas (cards) en el HTML
+    // Función para dibujar las tarjetas en el HTML
     function renderizarProductos(productos) {
-        contenedorProductos.innerHTML = ''; // Limpiar contenedor
+        contenedorProductos.innerHTML = '';
 
         if (productos.length === 0) {
-            contenedorProductos.innerHTML = '<div class="col-12 text-center"><p>No se encontraron productos con esos filtros.</p></div>';
+            contenedorProductos.innerHTML = `
+                <div class="tm-empty">
+                    <div class="tm-empty-icon">🔍</div>
+                    <p>No se encontraron productos con esos filtros.</p>
+                </div>
+            `;
             return;
         }
 
         productos.forEach(producto => {
             const imgSrc = producto.img_url || '';
-            // Crear el HTML de la tarjeta para cada producto
+            const badgeClass = obtenerBadgeClass(producto.categoria);
+
             const cardHTML = `
-                <div class="col-md-4 mb-4">
-                    <div class="card h-100 shadow-sm">
+                <div class="tm-card">
+                    <div class="tm-card-img">
                         ${imgSrc
-                            ? `<img src="${imgSrc}" class="card-img-top p-3" alt="${producto.modelo}" style="object-fit: contain; height: 150px;" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                               <div class="card-img-placeholder" style="display:none; height:150px;">${obtenerImagenSVG(producto.marca)}</div>`
-                            : `<div class="card-img-placeholder" style="height:150px;">${obtenerImagenSVG(producto.marca)}</div>`
+                            ? `<img src="${imgSrc}" alt="${producto.modelo}" 
+                                    onerror="this.style.display='none'; this.parentElement.innerHTML = generarPlaceholder('${producto.marca}');">`
+                            : generarPlaceholder(producto.marca)
                         }
-                        <div class="card-body d-flex flex-column">
-                            <span class="badge bg-secondary mb-2 align-self-start">${producto.categoria}</span>
-                            <h5 class="card-title text-truncate" title="${producto.modelo}">${producto.modelo}</h5>
-                            <p class="card-text text-muted small">${producto.marca}</p>
-                            
-                            <!-- Botones de acción -->
-                            <div class="mt-auto d-grid gap-2">
-                                <button class="btn btn-outline-primary btn-sm btn-comparar" data-id="${producto.id_producto}">
-                                    Añadir a Comparar
-                                </button>
-                                <button class="btn btn-light btn-sm btn-favorito" data-id="${producto.id_producto}" onclick="guardarFavorito(this)">
-                                    ❤️ Guardar
-                                </button>
-                            </div>
+                    </div>
+                    <div class="tm-card-body">
+                        <span class="tm-card-badge ${badgeClass}">${producto.categoria}</span>
+                        <h3 class="tm-card-title" title="${producto.modelo}">${producto.modelo}</h3>
+                        <p class="tm-card-brand">${producto.marca}</p>
+                        <div class="tm-card-actions">
+                            <button class="tm-btn tm-btn-outline tm-btn-sm" data-id="${producto.id_producto}" onclick="agregarComparar(this)">
+                                ⚖️ Comparar
+                            </button>
+                            <button class="tm-btn tm-btn-ghost tm-btn-sm" data-id="${producto.id_producto}" onclick="guardarFavorito(this)">
+                                ❤️ Guardar
+                            </button>
                         </div>
                     </div>
                 </div>
             `;
-            // Insertar el HTML en el contenedor
             contenedorProductos.insertAdjacentHTML('beforeend', cardHTML);
         });
     }
 
-    // Función para mostrar mensajes de error amigables
+    // Clase CSS del badge según la categoría
+    function obtenerBadgeClass(categoria) {
+        const clases = {
+            'CPU': 'tm-badge-cpu',
+            'GPU': 'tm-badge-gpu',
+            'RAM': 'tm-badge-ram',
+            'Laptop': 'tm-badge-laptop'
+        };
+        return clases[categoria] || 'tm-badge-laptop';
+    }
+
+    // Función para mostrar mensajes de error
     function mostrarError(mensaje) {
         contenedorProductos.innerHTML = `
-            <div class="col-12">
-                <div class="alert alert-danger" role="alert">
-                    ${mensaje}
-                </div>
+            <div class="tm-empty">
+                <div class="tm-empty-icon">⚠️</div>
+                <p>${mensaje}</p>
             </div>
         `;
     }
 
     // --- Event Listeners ---
-
-    // Cargar productos al iniciar la página
     cargarProductos();
-
-    // Recargar productos cuando el usuario hace clic en "Aplicar Filtros"
     btnAplicarFiltros.addEventListener('click', cargarProductos);
-
-    // Opcional: Recargar al presionar "Enter" en el buscador
     buscarNombre.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') cargarProductos();
     });
 });
 
-function obtenerImagenSVG(marca) {
-    const colores = {
-        'Asus':   { bg: '#00539b', texto: '#ffffff' },
-        'Lenovo': { bg: '#e2231a', texto: '#ffffff' },
-        'Intel':  { bg: '#0071c5', texto: '#ffffff' },
-        'AMD':    { bg: '#ed1c24', texto: '#ffffff' },
-        'MSI':    { bg: '#d00000', texto: '#ffffff' },
-        'HP':     { bg: '#0096d6', texto: '#ffffff' },
-        'Dell':   { bg: '#007db8', texto: '#ffffff' },
-    };
-    const c = colores[marca] || { bg: '#6c757d', texto: '#ffffff' };
+// Generar placeholder visual cuando no hay imagen
+function generarPlaceholder(marca) {
     const inicial = marca ? marca[0].toUpperCase() : '?';
-    return `<div style="width:100%; height:100%; background:${c.bg}; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:8px 8px 0 0;">
-                <span style="color:${c.texto}; font-size:2.5rem; font-weight:700; font-family:sans-serif;">${inicial}</span>
-                <span style="color:${c.texto}; font-size:0.75rem; font-family:sans-serif; opacity:0.85;">${marca}</span>
+    return `<div class="tm-card-placeholder">
+                <span class="tm-card-placeholder-letter">${inicial}</span>
+                <span class="tm-card-placeholder-brand">${marca || 'Sin marca'}</span>
             </div>`;
 }
 
+// Agregar producto a comparación
+function agregarComparar(btn) {
+    const idProducto = btn.dataset.id;
+    // TODO: Implementar lógica de comparación (Fase 5)
+    btn.innerHTML = '✅ Agregado';
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+}
+
+// Guardar producto como favorito
 function guardarFavorito(btn) {
     const usuario = localStorage.getItem('techmatch_usuario');
 
@@ -142,7 +147,8 @@ function guardarFavorito(btn) {
         return;
     }
 
-    // TODO: conectar con el endpoint de favoritos (Prioridad 3)
-    btn.textContent = '✅ Guardado';
+    // TODO: Conectar con endpoint de favoritos (Fase 5)
+    btn.innerHTML = '✅ Guardado';
     btn.disabled = true;
+    btn.style.opacity = '0.6';
 }

@@ -3,59 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechMatch - Registrarse</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>TechMatch — Crear Cuenta</title>
+    <meta name="description" content="Creá tu cuenta en TechMatch para guardar favoritos y comparar hardware.">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
-<body class="bg-light">
+<body>
 
     <?php include 'componentes/navbar.php'; ?>
 
-    <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-5">
-                <div class="card shadow-sm">
-                    <div class="card-body p-4">
-                        <h4 class="card-title mb-4 text-center">Crear Cuenta</h4>
+    <div class="tm-auth-wrapper">
+        <div class="tm-auth-card">
+            <h2>Crear Cuenta</h2>
+            <p class="tm-subtitle">Registrate para guardar favoritos y comparaciones</p>
 
-                        <div id="alerta-error" class="alert alert-danger d-none" role="alert"></div>
-                        <div id="alerta-exito" class="alert alert-success d-none" role="alert"></div>
+            <div id="alerta-error" class="tm-alert tm-alert-error"></div>
+            <div id="alerta-exito" class="tm-alert tm-alert-success"></div>
 
-                        <form id="form-registro">
-                            <div class="mb-3">
-                                <label for="nombre" class="form-label">Nombre de usuario</label>
-                                <input type="text" class="form-control" id="nombre" placeholder="Tu nombre" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="email" class="form-label">Correo electrónico</label>
-                                <input type="email" class="form-control" id="email" placeholder="tu@email.com" required>
-                            </div>
-                            <div class="mb-3">
-                                <label for="contrasenia" class="form-label">Contraseña</label>
-                                <input type="password" class="form-control" id="contrasenia" placeholder="Mínimo 6 caracteres" required minlength="6">
-                            </div>
-                            <div class="mb-3">
-                                <label for="confirmar" class="form-label">Confirmar contraseña</label>
-                                <input type="password" class="form-control" id="confirmar" placeholder="Repetí la contraseña" required>
-                            </div>
-                            <button type="submit" class="btn btn-primary w-100" id="btn-submit">
-                                Crear cuenta
-                            </button>
-                        </form>
-
-                        <hr>
-                        <p class="text-center mb-0 small">
-                            ¿Ya tenés cuenta? <a href="login.php">Iniciá sesión</a>
-                        </p>
-                    </div>
+            <form id="form-registro">
+                <div class="tm-form-group">
+                    <label for="nombre">Nombre de usuario</label>
+                    <input type="text" class="tm-input" id="nombre" placeholder="Tu nombre" required>
                 </div>
-            </div>
+                <div class="tm-form-group">
+                    <label for="email">Correo electrónico</label>
+                    <input type="email" class="tm-input" id="email" placeholder="tu@email.com" required>
+                </div>
+                <div class="tm-form-group">
+                    <label for="contrasenia">Contraseña</label>
+                    <input type="password" class="tm-input" id="contrasenia" placeholder="Mínimo 6 caracteres" required minlength="6">
+                </div>
+                <div class="tm-form-group">
+                    <label for="confirmar">Confirmar contraseña</label>
+                    <input type="password" class="tm-input" id="confirmar" placeholder="Repetí la contraseña" required>
+                </div>
+                <button type="submit" class="tm-btn tm-btn-primary tm-btn-w-full tm-btn-lg" id="btn-submit">
+                    Crear cuenta
+                </button>
+            </form>
+
+            <hr class="tm-divider">
+            <p class="tm-auth-footer">
+                ¿Ya tenés cuenta? <a href="login.php">Iniciá sesión</a>
+            </p>
         </div>
     </div>
 
+    <?php include 'componentes/footer.php'; ?>
+
     <script src="assets/js/api.js"></script>
     <script>
-        // Si ya está logueado, redirigir directo al catálogo
+        // Si ya está logueado, redirigir al catálogo
         if (localStorage.getItem('techmatch_usuario')) {
             window.location.href = 'catalogo.php';
         }
@@ -67,18 +64,17 @@
             const alertaError = document.getElementById('alerta-error');
             const alertaExito = document.getElementById('alerta-exito');
 
-            alertaError.classList.add('d-none');
-            alertaExito.classList.add('d-none');
+            alertaError.classList.remove('visible');
+            alertaExito.classList.remove('visible');
 
             const nombre = document.getElementById('nombre').value.trim();
             const email = document.getElementById('email').value.trim();
             const contrasenia = document.getElementById('contrasenia').value;
             const confirmar = document.getElementById('confirmar').value;
 
-            // Validación client-side antes de llamar a la API
             if (contrasenia !== confirmar) {
                 alertaError.textContent = 'Las contraseñas no coinciden.';
-                alertaError.classList.remove('d-none');
+                alertaError.classList.add('visible');
                 return;
             }
 
@@ -100,19 +96,19 @@
 
                 if (datos.success) {
                     alertaExito.textContent = '¡Cuenta creada! Redirigiendo al inicio de sesión...';
-                    alertaExito.classList.remove('d-none');
+                    alertaExito.classList.add('visible');
                     setTimeout(() => {
                         window.location.href = 'login.php';
                     }, 2000);
                 } else {
                     alertaError.textContent = datos.mensaje || 'No se pudo crear la cuenta.';
-                    alertaError.classList.remove('d-none');
+                    alertaError.classList.add('visible');
                 }
 
             } catch (error) {
                 console.error('Error en registro:', error);
                 alertaError.textContent = 'No se pudo conectar con el servidor. Verificá que Flask esté corriendo.';
-                alertaError.classList.remove('d-none');
+                alertaError.classList.add('visible');
             } finally {
                 btnSubmit.disabled = false;
                 btnSubmit.textContent = 'Crear cuenta';
