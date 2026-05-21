@@ -4,6 +4,7 @@ from config import Config
 from servicios.auth_servicio import AuthServicio
 from servicios.producto_servicio import ProductoServicio
 from servicios.comparacion_servicio import ComparacionServicio
+from servicios.favorito_servicio import FavoritoServicio
 
 # inicializarAplicacion - configura el servidor Flask
 app = Flask(__name__)
@@ -13,6 +14,7 @@ CORS(app)
 # instanciarServicio - creamos una instancia global del servicio de autenticacion
 authServicio = AuthServicio()
 # Instanciar el servicio globalmente
+favoritoServicio = FavoritoServicio()
 productoServicio = ProductoServicio()
 comparacionServicio = ComparacionServicio()
 
@@ -107,6 +109,42 @@ def compararLaptopsEndpoint():
     except Exception as e:
         # atraparErrores - Si algo explota en Python, evitamos que el servidor se caiga
         return jsonify({'success': False, 'mensaje': f'Error interno del servidor: {str(e)}'}), 500
+
+@app.route('/api/favoritos/agregar', methods=['POST'])
+def agregarFavoritoEndpoint():
+    try:
+        datos = request.get_json()
+        print(f"// LLEGÓ PETICIÓN: {datos}") # <-- Agregá esto
+        idUsuario = datos.get('idUsuario')
+        idProducto = datos.get('idProducto')
+        
+        resultado = favoritoServicio.agregar(idUsuario, idProducto)
+        print(f"// RESULTADO DAO: {resultado}") # <-- Y esto
+        
+        return jsonify(resultado), 200 if resultado['success'] else 400
+    except Exception as e:
+        print(f"// ERROR CRÍTICO: {e}") # <-- Y esto
+        return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
+
+@app.route('/api/favoritos/<int:idUsuario>', methods=['GET'])
+def listarFavoritosEndpoint(idUsuario):
+    try:
+        resultado = favoritoServicio.listar(idUsuario)
+        return jsonify(resultado), 200 if resultado['success'] else 400
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
+
+@app.route('/api/favoritos/eliminar', methods=['DELETE'])
+def eliminarFavoritoEndpoint():
+    try:
+        datos = request.get_json()
+        idUsuario = datos.get('idUsuario')
+        idProducto = datos.get('idProducto')
+        
+        resultado = favoritoServicio.eliminar(idUsuario, idProducto)
+        return jsonify(resultado), 200 if resultado['success'] else 400
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
 
 if __name__ == '__main__':
     # host='0.0.0.0' permite que Flask sea visible en toda la red (incluído Tailscale)

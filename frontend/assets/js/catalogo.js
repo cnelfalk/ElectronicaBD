@@ -24,17 +24,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const urlConFiltros = `${API_URL}/productos?${params.toString()}`;
 
+        // Buscar los favoritos del usuario si está logueado antes de renderizar
+        let favoritosIds = [];
+        const usuarioInfo = localStorage.getItem('techmatch_usuario');
+        if (usuarioInfo) {
+            const usuario = JSON.parse(usuarioInfo);
+            try {
+                const respFavs = await fetch(`${API_URL}/favoritos/${usuario.idUsuario}`);
+                const datosFavs = await respFavs.json();
+                if (datosFavs.success) {
+                    favoritosIds = datosFavs.data.map(fav => fav.id_producto);
+                }
+            } catch (e) {
+                console.error("Error cargando favoritos:", e);
+            }
+        }
+
         try {
             const respuesta = await fetch(urlConFiltros);
-
             if (!respuesta.ok) {
                 throw new Error(`Error HTTP: ${respuesta.status}`);
             }
 
             const datosJson = await respuesta.json();
-
             if (datosJson.success) {
-                renderizarProductos(datosJson.data);
+                renderizarProductos(datosJson.data, favoritosIds);
             } else {
                 mostrarError(datosJson.mensaje);
             }
@@ -46,9 +60,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Función para dibujar las tarjetas en el HTML
-    function renderizarProductos(productos) {
+    function renderizarProductos(productos, favoritosIds = []) {
         contenedorProductos.innerHTML = '';
-
         if (productos.length === 0) {
             contenedorProductos.innerHTML = `
                 <div class="tm-empty">
@@ -62,6 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         productos.forEach(producto => {
             const imgSrc = producto.img_url || '';
             const badgeClass = obtenerBadgeClass(producto.categoria);
+
+            // Lógica para saber si es favorito y setear los estados del botón
+            const esFavorito = favoritosIds.includes(producto.id_producto);
+            const btnClase = esFavorito ? 'tm-btn-primary' : 'tm-btn-ghost';
+            const btnTexto = esFavorito ? '❤️ Guardado' : '❤️ Guardar';
+            const estadoFav = esFavorito ? 'true' : 'false';
 
             const cardHTML = `
                 <div class="tm-card">
@@ -80,8 +99,9 @@ document.addEventListener('DOMContentLoaded', () => {
                             <button class="tm-btn tm-btn-outline tm-btn-sm" data-id="${producto.id_producto}" onclick="agregarComparar(this)">
                                 ⚖️ Comparar
                             </button>
-                            <button class="tm-btn tm-btn-ghost tm-btn-sm" data-id="${producto.id_producto}" onclick="guardarFavorito(this)">
-                                ❤️ Guardar
+                            
+                            <button class="tm-btn ${btnClase} tm-btn-sm" data-id="${producto.id_producto}" data-fav="${estadoFav}" onclick="toggleFavorito(this)">
+                                ${btnTexto}
                             </button>
                         </div>
                     </div>
@@ -138,17 +158,72 @@ function agregarComparar(btn) {
     btn.style.opacity = '0.6';
 }
 
-// Guardar producto como favorito
-function guardarFavorito(btn) {
-    const usuario = localStorage.getItem('techmatch_usuario');
-
-    if (!usuario) {
+// Activar o desactivar favorito
+async function toggleFavorito(btn) {
+    const usuarioInfo = localStorage.getItem('techmatch_usuario');
+    if (!usuarioInfo) {
         window.location.href = 'login.php?redirect=catalogo.php';
         return;
     }
 
-    // TODO: Conectar con endpoint de favoritos (Fase 5)
-    btn.innerHTML = '✅ Guardado';
+    const usuario = JSON.parse(usuarioInfo);
+    const idProducto = btn.dataset.id;
+    const esFavorito = btn.dataset.fav === 'true'; 
+    const textoOriginal = btn.innerHTML;
+    
+    btn.innerHTML = '⏳ Procesando...';
     btn.disabled = true;
-    btn.style.opacity = '0.6';
+
+    try {
+        if (esFavorito) {
+            // Ya era favorito: lo ELIMINAMOS
+            const respuesta = await fetch(`${API_URL}/favoritos/eliminar`, {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idUsuario: usuario.idUsuario,
+                    idProducto: parseInt(idProducto)
+                })
+            });
+            const datos = await respuesta.json();
+            
+            if (datos.success) {
+                btn.dataset.fav = 'false';
+                btn.innerHTML = '❤️ Guardar';
+                btn.classList.remove('tm-btn-primary');
+                btn.classList.add('tm-btn-ghost');
+            } else {
+                alert(datos.mensaje);
+                btn.innerHTML = textoOriginal;
+            }
+
+        } else {
+            // No era favorito: lo AGREGAMOS
+            const respuesta = await fetch(`${API_URL}/favoritos/agregar`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    idUsuario: usuario.idUsuario,
+                    idProducto: parseInt(idProducto)
+                })
+            });
+            const datos = await respuesta.json();
+            
+            if (datos.success) {
+                btn.dataset.fav = 'true';
+                btn.innerHTML = '❤️ Guardado';
+                btn.classList.add('tm-btn-primary');
+                btn.classList.remove('tm-btn-ghost');
+            } else {
+                alert(datos.mensaje);
+                btn.innerHTML = textoOriginal;
+            }
+        }
+    } catch (error) {
+        console.error('Error procesando favorito:', error);
+        alert('Ocurrió un error al procesar la solicitud.');
+        btn.innerHTML = textoOriginal;
+    } finally {
+        btn.disabled = false;
+    }
 }

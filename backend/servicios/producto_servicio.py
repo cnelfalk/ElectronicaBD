@@ -19,3 +19,4 @@ class ProductoServicio:
             return {"success": True, "data": productos, "total": len(productos)}
         else:
             return {"success": True, "data": [], "mensaje": "No se encontraron productos"}
+        
