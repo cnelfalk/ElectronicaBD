@@ -49,10 +49,12 @@ if __name__ == "__main__":
 
     # ── PASO 3: Retailers (precios + links + imagenes) ──────────
     print("\n  >>> FASE 3: Extrayendo precios de retailers...")
-    ejecutarBot("MercadoLibre — ASUS",   MercadoLibreScraper("Asus"))
-    ejecutarBot("MercadoLibre — LENOVO", MercadoLibreScraper("Lenovo"))
-    ejecutarBot("Compra Gamer — ASUS",   CompraGamerScraper("Asus"))
-    ejecutarBot("Compra Gamer — LENOVO", CompraGamerScraper("Lenovo"))
+    ejecutarBot("MercadoLibre — ASUS",          MercadoLibreScraper("Asus"))
+    ejecutarBot("MercadoLibre — LENOVO",         MercadoLibreScraper("Lenovo"))
+    ejecutarBot("Compra Gamer — ASUS Laptops",   CompraGamerScraper("Asus",   "Laptop"))
+    ejecutarBot("Compra Gamer — LENOVO Laptops", CompraGamerScraper("Lenovo", "Laptop"))
+    ejecutarBot("Compra Gamer — AMD CPUs",       CompraGamerScraper("AMD",    "CPU"))
+    ejecutarBot("Compra Gamer — Intel CPUs",     CompraGamerScraper("Intel",  "CPU"))
 
     print("\n" + "="*55)
     print("   SCRAPING COMPLETO")

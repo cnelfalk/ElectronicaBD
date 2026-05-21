@@ -79,9 +79,9 @@ def obtenerProductosEndpoint():
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
 
-# compararLaptopsEndpoint - Ruta GET para evaluar dos equipos
+# compararEndpoint - Ruta GET para evaluar dos equipos (Laptops o CPUs)
 @app.route('/api/comparar', methods=['GET'])
-def compararLaptopsEndpoint():
+def compararEndpoint():
     try:
         # extraerParametros - Capturamos los IDs y el perfil desde la URL
         # Usamos type=int para forzar que los IDs sean numeros y evitar errores de SQL
@@ -96,8 +96,33 @@ def compararLaptopsEndpoint():
                 'mensaje': 'Se requieren exactamente dos IDs (idA, idB) para comparar.'
             }), 400
 
-        # delegarAlServicio - Enviamos los datos al cerebro matematico
-        resultado = comparacionServicio.generarRecomendacionLaptops(idProductoA, idProductoB, perfilUso)
+        # Obtener las categorías de los dos productos seleccionados
+        categoriaA = comparacionServicio.productoDao.obtenerCategoriaPorId(idProductoA)
+        categoriaB = comparacionServicio.productoDao.obtenerCategoriaPorId(idProductoB)
+
+        if not categoriaA or not categoriaB:
+            return jsonify({
+                'success': False,
+                'mensaje': 'Uno o ambos productos no existen o no tienen una categoría asignada.'
+            }), 404
+
+        # Validar que ambos pertenezcan a la misma categoría
+        if categoriaA != categoriaB:
+            return jsonify({
+                'success': False,
+                'mensaje': f'No se pueden comparar productos de diferentes categorías ({categoriaA} vs {categoriaB}).'
+            }), 400
+
+        # Redirigir al servicio adecuado
+        if categoriaA == 'Laptop':
+            resultado = comparacionServicio.generarRecomendacionLaptops(idProductoA, idProductoB, perfilUso)
+        elif categoriaA == 'CPU':
+            resultado = comparacionServicio.generarRecomendacionCPUs(idProductoA, idProductoB, perfilUso)
+        else:
+            return jsonify({
+                'success': False,
+                'mensaje': f'La categoría {categoriaA} no está soportada para comparación actualmente.'
+            }), 400
         
         # verificarRespuesta - Si el servicio no encontro los IDs en la BD, devuelve un 404 Not Found
         if not resultado.get('success'):
@@ -114,16 +139,12 @@ def compararLaptopsEndpoint():
 def agregarFavoritoEndpoint():
     try:
         datos = request.get_json()
-        print(f"// LLEGÓ PETICIÓN: {datos}") # <-- Agregá esto
         idUsuario = datos.get('idUsuario')
         idProducto = datos.get('idProducto')
-        
+
         resultado = favoritoServicio.agregar(idUsuario, idProducto)
-        print(f"// RESULTADO DAO: {resultado}") # <-- Y esto
-        
         return jsonify(resultado), 200 if resultado['success'] else 400
     except Exception as e:
-        print(f"// ERROR CRÍTICO: {e}") # <-- Y esto
         return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
 
 @app.route('/api/favoritos/<int:idUsuario>', methods=['GET'])

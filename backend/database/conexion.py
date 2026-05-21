@@ -13,9 +13,8 @@ class ConexionDB:
 
     @classmethod
     def obtenerInstancia(cls):
-        if cls._instancia is None:
+        if cls._instancia is None or not cls._instancia.is_connected():
             try:
-                # Configuracion centralizada hacia la IP de Tailscale
                 cls._instancia = mysql.connector.connect(
                     host=Config.DB_HOST,
                     user=Config.DB_USER,

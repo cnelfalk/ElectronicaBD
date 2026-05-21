@@ -38,10 +38,15 @@ class ComparacionServicio:
         if not laptopA or not laptopB:
             return {"success": False, "mensaje": "Uno de los productos no existe o no es una Laptop."}
 
+        preciosA = self.productoDao.obtenerPreciosProducto(idProductoA)
+        preciosB = self.productoDao.obtenerPreciosProducto(idProductoB)
+
         recomendacion = {
             "success": True,
             "datosA": laptopA,
             "datosB": laptopB,
+            "preciosA": preciosA,
+            "preciosB": preciosB,
             "ganador": None,
             "motivo": "",
             "puntajeA": 0,
@@ -90,5 +95,71 @@ class ComparacionServicio:
         else:
             recomendacion['ganador'] = "Empate Técnico"
             recomendacion['motivo'] = "Ambos equipos ofrecen capacidades idénticas para el uso solicitado. Te sugerimos guiarte por el diseño físico o el precio."
+
+        return recomendacion
+
+    # generarRecomendacionCPUs - Metodo principal que orquesta la comparacion de procesadores.
+    def generarRecomendacionCPUs(self, idProductoA, idProductoB, perfilUso):
+        cpuA = self.productoDao.obtenerCPUPorId(idProductoA)
+        cpuB = self.productoDao.obtenerCPUPorId(idProductoB)
+
+        if not cpuA or not cpuB:
+            return {"success": False, "mensaje": "Uno de los productos no existe o no es una CPU."}
+
+        preciosA = self.productoDao.obtenerPreciosProducto(idProductoA)
+        preciosB = self.productoDao.obtenerPreciosProducto(idProductoB)
+
+        recomendacion = {
+            "success": True,
+            "datosA": cpuA,
+            "datosB": cpuB,
+            "preciosA": preciosA,
+            "preciosB": preciosB,
+            "ganador": None,
+            "motivo": "",
+            "puntajeA": 0,
+            "puntajeB": 0
+        }
+
+        perfilLower = perfilUso.lower() if perfilUso else "general"
+
+        frecBaseA = float(cpuA.get('frecuencia_base') or 3.0)
+        frecTurboA = float(cpuA.get('frecuencia_turbo') or frecBaseA)
+        nucleosA = int(cpuA.get('nucleos') or 4)
+        hilosA = int(cpuA.get('hilos') or 8)
+        tdpA = int(cpuA.get('tdp') or 65)
+
+        frecBaseB = float(cpuB.get('frecuencia_base') or 3.0)
+        frecTurboB = float(cpuB.get('frecuencia_turbo') or frecBaseB)
+        nucleosB = int(cpuB.get('nucleos') or 4)
+        hilosB = int(cpuB.get('hilos') or 8)
+        tdpB = int(cpuB.get('tdp') or 65)
+
+        if perfilLower in ['gaming', 'diseño']:
+            recomendacion['puntajeA'] = (frecTurboA * 15) + (nucleosA * 8) + (hilosA * 2)
+            recomendacion['puntajeB'] = (frecTurboB * 15) + (nucleosB * 8) + (hilosB * 2)
+
+        elif perfilLower == 'desarrollo de software':
+            recomendacion['puntajeA'] = (nucleosA * 15) + (hilosA * 10) + (frecBaseA * 5)
+            recomendacion['puntajeB'] = (nucleosB * 15) + (hilosB * 10) + (frecBaseB * 5)
+
+        elif perfilLower == 'ofimatica':
+            # Ofimática prioriza bajo TDP y frecuencia base
+            recomendacion['puntajeA'] = (frecBaseA * 20) + (nucleosA * 5) + (100 - tdpA) * 0.5
+            recomendacion['puntajeB'] = (frecBaseB * 20) + (nucleosB * 5) + (100 - tdpB) * 0.5
+
+        else:
+            recomendacion['puntajeA'] = (frecBaseA * 10) + (frecTurboA * 10) + (nucleosA * 5)
+            recomendacion['puntajeB'] = (frecBaseB * 10) + (frecTurboB * 10) + (nucleosB * 5)
+
+        if recomendacion['puntajeA'] > recomendacion['puntajeB']:
+            recomendacion['ganador'] = cpuA['modelo']
+            recomendacion['motivo'] = f"Para el perfil '{perfilUso}', {cpuA['modelo']} ofrece mayor rendimiento debido a sus {cpuA['nucleos']} núcleos, {cpuA['hilos']} hilos y frecuencia turbo de {cpuA['frecuencia_turbo']} GHz."
+        elif recomendacion['puntajeB'] > recomendacion['puntajeA']:
+            recomendacion['ganador'] = cpuB['modelo']
+            recomendacion['motivo'] = f"Para el perfil '{perfilUso}', {cpuB['modelo']} es la opción recomendada gracias a sus {cpuB['nucleos']} núcleos, {cpuB['hilos']} hilos y frecuencia turbo de {cpuB['frecuencia_turbo']} GHz."
+        else:
+            recomendacion['ganador'] = "Empate Técnico"
+            recomendacion['motivo'] = "Ambos procesadores cuentan con características equivalentes de rendimiento para este perfil de uso."
 
         return recomendacion

@@ -101,7 +101,7 @@
                         <option value="Gaming">Gaming</option>
                         <option value="Ofimatica">Ofimática</option>
                         <option value="Diseño">Diseño</option>
-                        <option value="Desarrollo">Desarrollo de Software</option>
+                        <option value="Desarrollo de Software">Desarrollo de Software</option>
                     </select>
                 </div>
 

@@ -37,7 +37,7 @@ class AsusScraperLaptops(ScraperBase):
             print("  [ASUS] Esperando renderizado JS + scrolleando...")
             self._scrollParaCargar(driver)
 
-            sopa = BeautifulSoup(driver.page_source, 'lxml')
+            sopa = BeautifulSoup(driver.page_source, 'html.parser')
 
             # Estrategia multi-selector para encontrar product cards
             items = self._buscarProductCards(sopa)
@@ -177,7 +177,7 @@ class AsusScraperLaptops(ScraperBase):
             driver.execute_script("window.scrollTo(0, 2000);")
             time.sleep(2)
 
-            sopa = BeautifulSoup(driver.page_source, 'lxml')
+            sopa = BeautifulSoup(driver.page_source, 'html.parser')
             texto_completo = sopa.get_text(separator=" ").lower()
 
             specs = {
@@ -298,15 +298,25 @@ class LenovoScraperLaptops(ScraperBase):
                 driver.execute_script(f"window.scrollTo(0, {(i + 1) * 1000});")
                 time.sleep(1)
 
-            sopa = BeautifulSoup(driver.page_source, 'lxml')
+            sopa = BeautifulSoup(driver.page_source, 'html.parser')
 
-            # PSREF lista productos como enlaces
+            # PSREF lista productos como enlaces — URLs usan /l/Product/ con submarca
             enlaces_producto = []
+            # Submarcas de laptops Lenovo (excluimos monitores, desktops, AIO)
+            submarcas_laptop = ['ideapad', 'thinkpad', 'yoga', 'legion', 'v15', 'v14',
+                                'thinkbook', 'loq', 'flex', 'slim', 'e14', 'e16', 'l14',
+                                'l16', 'p16', 't14', 'x13', 'x1']
             for a in sopa.find_all('a', href=True):
                 href = a.get('href', '')
                 texto = a.text.strip()
-                if '/Product/Lenovo/' in href and len(texto) > 5:
-                    if any(k in texto.lower() for k in ['ideapad', 'thinkpad', 'yoga', 'legion', 'v15', 'v14', 'thinkbook']):
+                # Aceptar tanto /Product/ como /l/Product/
+                if ('/Product/' in href or '/l/Product/' in href) and len(texto) > 5:
+                    # Filtrar monitores, desktops, AIO, accesorios
+                    texto_lower = texto.lower()
+                    href_lower = href.lower()
+                    if any(excl in texto_lower or excl in href_lower for excl in ['monitor', 'desktop', 'aio', 'tower', 'thinkcentre', 'thinkvision', 'thinksmart']):
+                        continue
+                    if any(k in texto_lower or k in href_lower for k in submarcas_laptop):
                         url_completa = href if href.startswith('http') else f"https://psref.lenovo.com{href}"
                         enlaces_producto.append((texto, url_completa))
 
@@ -327,7 +337,14 @@ class LenovoScraperLaptops(ScraperBase):
                 try:
                     specs = self._extraerSpecsDePSREF(driver, url)
                     if specs:
-                        modelo = nombre if "lenovo" in nombre.lower() else f"Lenovo {nombre}"
+                        nombre_limpio = nombre.strip()
+                        if nombre_limpio.lower() in ['view details', 'details', 'ver detalles', 'ver detalle', 'specs', 'specifications', 'click here', '']:
+                            # Extraer de la URL, e.g., https://psref.lenovo.com/Product/ThinkPad/ThinkPad_E14_Gen_8_AMD -> ThinkPad E14 Gen 8 AMD
+                            parts = [p for p in url.split('/') if p]
+                            if parts:
+                                nombre_limpio = parts[-1].replace('_', ' ')
+                        
+                        modelo = nombre_limpio if "lenovo" in nombre_limpio.lower() else f"Lenovo {nombre_limpio}"
                         self.dao.upsertLaptop(
                             modelo, specs.get("imgUrl", ""), self.marca,
                             specs.get("pesoKg", 0), specs.get("tamanioPantalla", 0),
@@ -357,7 +374,7 @@ class LenovoScraperLaptops(ScraperBase):
             driver.execute_script("window.scrollTo(0, 1500);")
             time.sleep(2)
 
-            sopa = BeautifulSoup(driver.page_source, 'lxml')
+            sopa = BeautifulSoup(driver.page_source, 'html.parser')
             texto = sopa.get_text(separator=" ").lower()
 
             specs = {
@@ -452,7 +469,7 @@ class LenovoScraperLaptops(ScraperBase):
                 driver.execute_script(f"window.scrollTo(0, {(i + 1) * 1500});")
                 time.sleep(1.5)
 
-            sopa = BeautifulSoup(driver.page_source, 'lxml')
+            sopa = BeautifulSoup(driver.page_source, 'html.parser')
 
             items = (
                 sopa.find_all('div', class_=lambda c: c and isinstance(c, str) and 'product-card' in c) or

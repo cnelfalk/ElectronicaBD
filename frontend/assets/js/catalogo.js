@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 class="tm-card-title" title="${producto.modelo}">${producto.modelo}</h3>
                         <p class="tm-card-brand">${producto.marca}</p>
                         <div class="tm-card-actions">
-                            <button class="tm-btn tm-btn-outline tm-btn-sm" data-id="${producto.id_producto}" onclick="agregarComparar(this)">
+                            <button class="tm-btn tm-btn-outline tm-btn-sm" data-id="${producto.id_producto}" data-categoria="${producto.categoria}" data-modelo="${producto.modelo}" onclick="agregarComparar(this)">
                                 ⚖️ Comparar
                             </button>
                             
@@ -109,6 +109,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             contenedorProductos.insertAdjacentHTML('beforeend', cardHTML);
         });
+        actualizarBotonesCatalogo();
     }
 
     // Clase CSS del badge según la categoría
@@ -149,14 +150,146 @@ function generarPlaceholder(marca) {
             </div>`;
 }
 
+// Obtener lista de comparación de sessionStorage
+function obtenerComparacion() {
+    const items = sessionStorage.getItem('techmatch_comparar');
+    return items ? JSON.parse(items) : [];
+}
+
+// Guardar lista de comparación en sessionStorage
+function guardarComparacion(items) {
+    sessionStorage.setItem('techmatch_comparar', JSON.stringify(items));
+    actualizarBarraComparacion();
+}
+
+// Actualizar el estado de los botones de comparar en el catálogo
+function actualizarBotonesCatalogo() {
+    const items = obtenerComparacion();
+    const ids = items.map(item => item.id);
+    
+    document.querySelectorAll('[onclick="agregarComparar(this)"]').forEach(btn => {
+        const id = btn.dataset.id;
+        if (ids.includes(id)) {
+            btn.innerHTML = '✅ Agregado';
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+        } else {
+            btn.innerHTML = '⚖️ Comparar';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    });
+}
+
 // Agregar producto a comparación
 function agregarComparar(btn) {
-    const idProducto = btn.dataset.id;
-    // TODO: Implementar lógica de comparación (Fase 5)
-    btn.innerHTML = '✅ Agregado';
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
+    const id = btn.dataset.id;
+    const categoria = btn.dataset.categoria;
+    const modelo = btn.dataset.modelo;
+    
+    let items = obtenerComparacion();
+    
+    // Validar categoría: todos deben ser de la misma categoría
+    if (items.length > 0 && items[0].categoria !== categoria) {
+        alert(`No podés comparar un producto de categoría ${categoria} con uno de categoría ${items[0].categoria}. Deben ser de la misma categoría.`);
+        return;
+    }
+    
+    // Límite máximo de 2 productos
+    if (items.length >= 2) {
+        alert('Solo podés comparar hasta 2 productos a la vez. Quitá uno para agregar otro.');
+        return;
+    }
+    
+    // Evitar duplicados
+    if (items.some(item => item.id === id)) {
+        return;
+    }
+    
+    items.push({ id, categoria, modelo });
+    guardarComparacion(items);
+    actualizarBotonesCatalogo();
 }
+
+// Quitar producto de la comparación
+function quitarComparar(id) {
+    let items = obtenerComparacion();
+    items = items.filter(item => item.id !== id);
+    guardarComparacion(items);
+    actualizarBotonesCatalogo();
+}
+
+// Limpiar toda la comparación
+function limpiarComparar() {
+    guardarComparacion([]);
+    actualizarBotonesCatalogo();
+}
+
+// Redirigir a la página de comparación
+function irAComparar() {
+    const items = obtenerComparacion();
+    if (items.length < 2) {
+        alert('Seleccioná exactamente 2 productos para comparar.');
+        return;
+    }
+    window.location.href = `comparar.php?idA=${items[0].id}&idB=${items[1].id}`;
+}
+
+// Actualizar la barra flotante de comparación
+function actualizarBarraComparacion() {
+    let bar = document.getElementById('compareBar');
+    const items = obtenerComparacion();
+    
+    if (items.length === 0) {
+        if (bar) {
+            bar.classList.remove('visible');
+            setTimeout(() => {
+                const currentItems = obtenerComparacion();
+                const currentBar = document.getElementById('compareBar');
+                if (currentBar && currentItems.length === 0) {
+                    currentBar.remove();
+                }
+            }, 400); // esperar a que termine la transición css
+        }
+        return;
+    }
+    
+    if (!bar) {
+        bar = document.createElement('div');
+        bar.id = 'compareBar';
+        bar.className = 'tm-compare-bar';
+        document.body.appendChild(bar);
+    }
+    
+    let itemsHTML = '';
+    items.forEach(item => {
+        itemsHTML += `
+            <div class="tm-compare-bar-item">
+                <span>${item.modelo.substring(0, 20)}${item.modelo.length > 20 ? '...' : ''}</span>
+                <button class="tm-compare-bar-remove" onclick="quitarComparar('${item.id}')">×</button>
+            </div>
+        `;
+    });
+    
+    bar.innerHTML = `
+        <div class="tm-compare-bar-items">
+            ${itemsHTML}
+        </div>
+        <div class="tm-compare-bar-actions">
+            <button class="tm-btn tm-btn-primary tm-btn-sm" onclick="irAComparar()">⚖️ Comparar</button>
+            <button class="tm-btn tm-btn-ghost tm-btn-sm" onclick="limpiarComparar()">Limpiar</button>
+        </div>
+    `;
+    
+    // Forzar reflow para animación
+    bar.offsetHeight;
+    bar.classList.add('visible');
+}
+
+// Inicializar la barra flotante al cargar
+window.addEventListener('DOMContentLoaded', () => {
+    actualizarBarraComparacion();
+});
 
 // Activar o desactivar favorito
 async function toggleFavorito(btn) {

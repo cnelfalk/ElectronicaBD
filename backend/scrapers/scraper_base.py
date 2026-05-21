@@ -24,15 +24,61 @@ class ScraperBase(ABC):
     def ejecutarScraping(self):
         pass
 
+    def _limpiarLocksWdm(self):
+        try:
+            home = os.path.expanduser("~")
+            wdm_dir = os.path.join(home, ".wdm")
+            if os.path.exists(wdm_dir):
+                import glob
+                lock_files = glob.glob(os.path.join(wdm_dir, "*lock*")) + glob.glob(os.path.join(wdm_dir, ".*lock*"))
+                for lf in lock_files:
+                    if os.path.isfile(lf):
+                        try:
+                            os.remove(lf)
+                            print(f"  [WDM] Eliminado archivo de bloqueo residual: {lf}")
+                        except Exception as re:
+                            print(f"  [WDM] No se pudo remover {lf}: {re}")
+        except Exception as e:
+            print(f"  [WDM] Advertencia al limpiar archivos de bloqueo: {e}")
+
     def _crearDriver(self):
+        self._limpiarLocksWdm()
         opciones = Options()
         opciones.add_argument('--headless')
         opciones.add_argument('--disable-gpu')
         opciones.add_argument('--no-sandbox')
         opciones.add_argument('--disable-dev-shm-usage')
+        opciones.add_argument('--window-size=1920,1080')
+        opciones.add_argument('--disable-http2')
         opciones.add_argument(f'user-agent={self.userAgent}')
-        servicio = Service(ChromeDriverManager().install())
-        return webdriver.Chrome(service=servicio, options=opciones)
+        
+        # Anti-detect options to bypass bot protection / CAPTCHAs
+        opciones.add_argument('--disable-blink-features=AutomationControlled')
+        opciones.add_experimental_option("excludeSwitches", ["enable-automation"])
+        opciones.add_experimental_option('useAutomationExtension', False)
+        
+        # Priorizar Selenium Manager nativo (no crea archivos .wdm-lock)
+        try:
+            driver = webdriver.Chrome(options=opciones)
+        except Exception as e:
+            print(f"  [WDM] Selenium Manager nativo fallo: {e}")
+            print("  [WDM] Intentando con ChromeDriverManager como fallback...")
+            try:
+                servicio = Service(ChromeDriverManager().install())
+                driver = webdriver.Chrome(service=servicio, options=opciones)
+            except Exception as fe:
+                print(f"  [WDM] Fallo critico al iniciar WebDriver: {fe}")
+                raise fe
+
+        # Remove webdriver signature via CDP command
+        try:
+            driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': 'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'
+            })
+        except Exception as cdpe:
+            print(f"  [WDM] Advertencia al configurar comando CDP: {cdpe}")
+
+        return driver
 
     def _esperar(self, minSeg=1, maxSeg=3):
         time.sleep(random.uniform(minSeg, maxSeg))

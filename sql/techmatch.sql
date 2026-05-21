@@ -14,18 +14,19 @@ SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,N
 -- -----------------------------------------------------
 -- Schema techmatch
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `techmatch` DEFAULT CHARACTER SET utf8mb3 ;
+CREATE SCHEMA IF NOT EXISTS `techmatch` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci ;
 USE `techmatch` ;
 
 -- -----------------------------------------------------
 -- Table `techmatch`.`marcas`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`marcas` (
-  `id_marca` INT NOT NULL,
+  `id_marca` INT NOT NULL AUTO_INCREMENT,
   `nombre_marca` VARCHAR(45) NULL DEFAULT NULL,
   `url_marca` VARCHAR(255) NULL DEFAULT NULL,
   PRIMARY KEY (`id_marca`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 6
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -33,10 +34,11 @@ DEFAULT CHARACTER SET = utf8mb3;
 -- Table `techmatch`.`categorias`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`categorias` (
-  `id_categoria` INT NOT NULL,
+  `id_categoria` INT NOT NULL AUTO_INCREMENT,
   `nombre_categoria` VARCHAR(45) NULL DEFAULT NULL,
   PRIMARY KEY (`id_categoria`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 6
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -59,6 +61,7 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`productos` (
     FOREIGN KEY (`id_categoria`)
     REFERENCES `techmatch`.`categorias` (`id_categoria`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 115
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -93,6 +96,7 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`usuarios` (
   PRIMARY KEY (`id_usuario`),
   UNIQUE INDEX `email_usuario_UNIQUE` (`email_usuario` ASC) VISIBLE)
 ENGINE = InnoDB
+AUTO_INCREMENT = 4
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -100,7 +104,7 @@ DEFAULT CHARACTER SET = utf8mb3;
 -- Table `techmatch`.`comparaciones_guardadas`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`comparaciones_guardadas` (
-  `id_comparacion` INT NOT NULL,
+  `id_comparacion` INT NOT NULL AUTO_INCREMENT,
   `fec_creacion_comp` DATETIME NULL DEFAULT NULL,
   `id_categoria` INT NOT NULL,
   `id_usuario` INT NOT NULL,
@@ -140,10 +144,11 @@ DEFAULT CHARACTER SET = utf8mb3;
 -- Table `techmatch`.`socket`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`socket` (
-  `id_socket` INT NOT NULL,
+  `id_socket` INT NOT NULL AUTO_INCREMENT,
   `nombre_socket` VARCHAR(45) NULL DEFAULT NULL,
   PRIMARY KEY (`id_socket`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 7
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -169,6 +174,7 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`cpu` (
     FOREIGN KEY (`id_socket`)
     REFERENCES `techmatch`.`socket` (`id_socket`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 93
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -230,6 +236,7 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`laptops` (
     FOREIGN KEY (`id_producto`)
     REFERENCES `techmatch`.`productos` (`id_producto`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 23
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -237,10 +244,11 @@ DEFAULT CHARACTER SET = utf8mb3;
 -- Table `techmatch`.`perfiles_uso`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`perfiles_uso` (
-  `id_perfil` INT NOT NULL,
+  `id_perfil` INT NOT NULL AUTO_INCREMENT,
   `nombre_perfil` ENUM('gaming', 'ofimatica', 'diseño', 'Desarrollo de Software') NOT NULL,
   PRIMARY KEY (`id_perfil`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 5
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -308,11 +316,12 @@ DEFAULT CHARACTER SET = utf8mb3;
 -- Table `techmatch`.`tiendas`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`tiendas` (
-  `id_tienda` INT NOT NULL,
+  `id_tienda` INT NOT NULL AUTO_INCREMENT,
   `nombre_tienda` VARCHAR(45) NULL DEFAULT NULL,
   `url_tienda` VARCHAR(255) NULL DEFAULT NULL,
   PRIMARY KEY (`id_tienda`))
 ENGINE = InnoDB
+AUTO_INCREMENT = 7
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -323,7 +332,7 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`se_vende_en` (
   `id_producto` INT NOT NULL,
   `id_tienda` INT NOT NULL,
   `precio` DECIMAL(12,2) NULL DEFAULT NULL,
-  `url_producto` VARCHAR(500) NULL DEFAULT NULL,
+  `url_producto` VARCHAR(2083) NULL DEFAULT NULL,
   `fec_actualizacion` DATETIME NULL DEFAULT NULL,
   PRIMARY KEY (`id_producto`, `id_tienda`),
   INDEX `fk_Componentes_has_Tiendas_Tiendas1_idx` (`id_tienda` ASC) VISIBLE,
@@ -336,6 +345,195 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`se_vende_en` (
     REFERENCES `techmatch`.`tiendas` (`id_tienda`))
 ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb3;
+
+-- -----------------------------------------------------
+-- Procedimientos Almacenados y Funciones
+-- -----------------------------------------------------
+
+DELIMITER $$
+
+-- 1. Procedimiento para registrar o actualizar el precio de venta de un producto en una tienda
+DROP PROCEDURE IF EXISTS `sp_registrar_precio_producto`$$
+CREATE PROCEDURE `sp_registrar_precio_producto`(
+    IN p_id_producto INT,
+    IN p_id_tienda INT,
+    IN p_precio DECIMAL(12,2),
+    IN p_url_producto VARCHAR(2083)
+)
+BEGIN
+    INSERT INTO `se_vende_en` (`id_producto`, `id_tienda`, `precio`, `url_producto`, `fec_actualizacion`)
+    VALUES (p_id_producto, p_id_tienda, p_precio, p_url_producto, NOW())
+    ON DUPLICATE KEY UPDATE 
+        `precio` = p_precio, 
+        `url_producto` = p_url_producto, 
+        `fec_actualizacion` = NOW();
+END$$
+
+-- 2. Procedimiento para obtener un reporte estadístico de precios de un producto
+DROP PROCEDURE IF EXISTS `sp_obtener_reporte_precios`$$
+CREATE PROCEDURE `sp_obtener_reporte_precios`(
+    IN p_id_producto INT
+)
+BEGIN
+    SELECT 
+        p.id_producto,
+        p.modelo_producto,
+        MIN(s.precio) AS precio_minimo,
+        MAX(s.precio) AS precio_maximo,
+        AVG(s.precio) AS precio_promedio,
+        COUNT(s.id_tienda) AS cantidad_tiendas
+    FROM `productos` p
+    LEFT JOIN `se_vende_en` s ON p.id_producto = s.id_producto
+    WHERE p.id_producto = p_id_producto
+    GROUP BY p.id_producto, p.modelo_producto;
+END$$
+
+-- 3. Procedimiento para guardar/actualizar un favorito
+DROP PROCEDURE IF EXISTS `sp_guardar_favorito`$$
+CREATE PROCEDURE `sp_guardar_favorito`(
+    IN p_id_usuario INT,
+    IN p_id_producto INT
+)
+BEGIN
+    INSERT INTO `guarda_favorito` (`id_producto`, `id_usuario`, `fecha_agregado_fav`)
+    VALUES (p_id_producto, p_id_usuario, NOW())
+    ON DUPLICATE KEY UPDATE 
+        `fecha_agregado_fav` = NOW();
+END$$
+
+-- 4. Función para obtener el precio mínimo de un producto
+DROP FUNCTION IF EXISTS `fn_obtener_precio_minimo`$$
+CREATE FUNCTION `fn_obtener_precio_minimo`(
+    p_id_producto INT
+) RETURNS DECIMAL(12,2)
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_precio_min DECIMAL(12,2);
+    
+    SELECT MIN(`precio`) INTO v_precio_min
+    FROM `se_vende_en`
+    WHERE `id_producto` = p_id_producto;
+    
+    RETURN v_precio_min;
+END$$
+
+-- 5. Función para calcular un puntaje sintético (0-100) para un CPU
+DROP FUNCTION IF EXISTS `fn_calcular_puntaje_cpu`$$
+CREATE FUNCTION `fn_calcular_puntaje_cpu`(
+    p_id_cpu INT
+) RETURNS INT
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_nucleos INT;
+    DECLARE v_hilos INT;
+    DECLARE v_turbo DECIMAL(4,2);
+    DECLARE v_puntaje INT DEFAULT 0;
+    
+    SELECT `nucleos`, `hilos`, `frecuencia_turbo`
+    INTO v_nucleos, v_hilos, v_turbo
+    FROM `cpu`
+    WHERE `id_CPU` = p_id_cpu;
+    
+    -- Si no existe el CPU, retornamos 0
+    IF v_nucleos IS NULL THEN
+        RETURN 0;
+    END IF;
+    
+    -- Algoritmo simple ponderado: núcleos (40%), hilos (20%), turbo frequency (40%)
+    SET v_puntaje = (v_nucleos * 4) + (v_hilos * 1.5) + (COALESCE(v_turbo, 2.0) * 10);
+    
+    -- Limitar puntaje máximo a 100
+    IF v_puntaje > 100 THEN
+        SET v_puntaje = 100;
+    END IF;
+    
+    RETURN v_puntaje;
+END$$
+
+-- 6. Función para verificar compatibilidad de sockets entre CPU y Placa Madre
+DROP FUNCTION IF EXISTS `fn_verificar_compatibilidad_socket`$$
+CREATE FUNCTION `fn_verificar_compatibilidad_socket`(
+    p_id_cpu INT,
+    p_id_placa INT
+) RETURNS TINYINT(1)
+DETERMINISTIC
+READS SQL DATA
+BEGIN
+    DECLARE v_socket_cpu INT;
+    DECLARE v_socket_placa INT;
+    
+    SELECT `id_socket` INTO v_socket_cpu FROM `cpu` WHERE `id_CPU` = p_id_cpu;
+    SELECT `id_socket` INTO v_socket_placa FROM `placa_madre` WHERE `id_placa_madre` = p_id_placa;
+    
+    IF v_socket_cpu IS NOT NULL AND v_socket_placa IS NOT NULL AND v_socket_cpu = v_socket_placa THEN
+        RETURN 1;
+    ELSE
+        RETURN 0;
+    END IF;
+END$$
+
+-- 4b. Procedimiento alternativo para obtener el precio mínimo (evita error de binary logging/privilegios)
+DROP PROCEDURE IF EXISTS `sp_obtener_precio_minimo`$$
+CREATE PROCEDURE `sp_obtener_precio_minimo`(
+    IN p_id_producto INT,
+    OUT p_precio_min DECIMAL(12,2)
+)
+BEGIN
+    SELECT MIN(`precio`) INTO p_precio_min
+    FROM `se_vende_en`
+    WHERE `id_producto` = p_id_producto;
+END$$
+
+-- 5b. Procedimiento alternativo para calcular el puntaje de CPU (evita error de binary logging/privilegios)
+DROP PROCEDURE IF EXISTS `sp_calcular_puntaje_cpu`$$
+CREATE PROCEDURE `sp_calcular_puntaje_cpu`(
+    IN p_id_cpu INT,
+    OUT p_puntaje INT
+)
+BEGIN
+    DECLARE v_nucleos INT;
+    DECLARE v_hilos INT;
+    DECLARE v_turbo DECIMAL(4,2);
+    
+    SELECT `nucleos`, `hilos`, `frecuencia_turbo`
+    INTO v_nucleos, v_hilos, v_turbo
+    FROM `cpu`
+    WHERE `id_CPU` = p_id_cpu;
+    
+    IF v_nucleos IS NULL THEN
+        SET p_puntaje = 0;
+    ELSE
+        SET p_puntaje = (v_nucleos * 4) + (v_hilos * 1.5) + (COALESCE(v_turbo, 2.0) * 10);
+        IF p_puntaje > 100 THEN
+            SET p_puntaje = 100;
+        END IF;
+    END IF;
+END$$
+
+-- 6b. Procedimiento alternativo para verificar compatibilidad de sockets (evita error de binary logging/privilegios)
+DROP PROCEDURE IF EXISTS `sp_verificar_compatibilidad_socket`$$
+CREATE PROCEDURE `sp_verificar_compatibilidad_socket`(
+    IN p_id_cpu INT,
+    IN p_id_placa INT,
+    OUT p_compatible TINYINT(1)
+)
+BEGIN
+    DECLARE v_socket_cpu INT;
+    DECLARE v_socket_placa INT;
+    
+    SELECT `id_socket` INTO v_socket_cpu FROM `cpu` WHERE `id_CPU` = p_id_cpu;
+    SELECT `id_socket` INTO v_socket_placa FROM `placa_madre` WHERE `id_placa_madre` = p_id_placa;
+    
+    IF v_socket_cpu IS NOT NULL AND v_socket_placa IS NOT NULL AND v_socket_cpu = v_socket_placa THEN
+        SET p_compatible = 1;
+    ELSE
+        SET p_compatible = 0;
+    END IF;
+END$$
+
+DELIMITER ;
 
 
 SET SQL_MODE=@OLD_SQL_MODE;

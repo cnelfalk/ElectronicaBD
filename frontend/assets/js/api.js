@@ -1,3 +1,4 @@
+// IP de Tailscale — actualizar si se despliega en otro ambiente
 var API_URL = 'http://100.82.23.52:5000/api';
 
 async function apiRequest(endpoint, options = {}) {
