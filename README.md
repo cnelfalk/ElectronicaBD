@@ -1,123 +1,156 @@
 # 💻 TechMatch - Sistema de Comparación de Hardware
 
-TechMatch es una plataforma integral de comparación de hardware que permite a los usuarios encontrar y comparar componentes de PC y laptops. El sistema utiliza **bots de web scraping** para extraer automáticamente especificaciones técnicas desde las páginas oficiales de los fabricantes y precios actualizados desde tiendas online reconocidas.
+TechMatch es una plataforma relacional avanzada para la comparación de hardware de computación y laptops. El sistema utiliza **bots de web scraping** automáticos con Selenium y BeautifulSoup para recopilar especificaciones técnicas de fabricantes y precios reales de retailers locales, consolidando la información en un modelo de datos estructurado que habilita recomendaciones inteligentes y comparaciones homogéneas basadas en perfiles de uso.
 
-## 🚀 Características Principales
+---
 
-- **Catálogo Automatizado**: Mantenimiento automático de productos, especificaciones y precios mediante web scraping.
-- **Comparador Inteligente**: Herramienta de comparación de hardware basada en perfiles de uso.
-- **Gestión de Usuarios**: Registro, autenticación y sistema de favoritos/comparaciones guardadas.
-- **Arquitectura Modular**: Separación clara entre el motor de extracción de datos (Scrapers), la API de negocio (Backend) y la interfaz de usuario (Frontend).
+## 🚀 Características Clave
+
+* 📊 **Catálogo General y Especializado**: Clasificación dinámica de productos en múltiples categorías: **Laptops**, **CPUs**, **GPUs**, **Memorias RAM** y **Almacenamiento (SSD/SSD NVMe/HDD)**.
+* 🤖 **Ingesta y Validación Estricta**: Filtros avanzados en la capa de base de datos que descartan de forma automática registros incompletos (como laptops sin CPU definida) o productos incorrectos (como consolas clasificadas como procesadores).
+* 🧠 **Comparador Inteligente por Perfiles**: Puntuación y recomendación automatizada en base a perfiles de uso:
+  * 🎮 **Gaming**: Prioriza frecuencias altas, memoria VRAM de GPUs y latencia baja.
+  * 💻 **Desarrollo de Software**: Prioriza núcleos/hilos de CPU y cantidad de RAM.
+  * 💼 **Ofimática/Productividad**: Prioriza consumo energético eficiente (bajo TDP) y discos rápidos.
+  * 🎨 **Diseño Gráfico / Creación**: Prioriza una mezcla equilibrada de RAM, núcleos y VRAM.
+* 🏬 **Mapeo de Múltiples Tiendas (N:M)**: Monitoreo de precios, urls y disponibilidad en retailers reconocidos como *Compra Gamer* y *Mercado Libre*.
+* 👤 **Área de Usuarios**: Registro seguro, inicio de sesión (contraseñas hasheadas con `bcrypt`), gestión de favoritos y registro histórico de comparaciones guardadas.
 
 ---
 
 ## 🏗️ Arquitectura del Sistema
 
-El proyecto está diseñado bajo un enfoque modular, dividiendo las responsabilidades en distintas capas:
+La solución está separada en capas limpias e independientes:
+
+```mermaid
+graph TD
+    A[PHP Frontend] <-->|Peticiones HTTP JSON| B[Flask Backend API]
+    B <-->|Patrón Singleton| C[(MySQL DB)]
+    D[Orquestador run_bots.py] -->|Carga de especificaciones| C
+    D -->|Scraping de Precios y Enlaces| C
+```
 
 ### 1. Frontend (Cliente)
-Desarrollado en **PHP**, HTML, CSS y JavaScript. Se encarga de la interfaz de usuario, interactuando de forma dinámica con la API REST del backend para mostrar el catálogo, el comparador y gestionar las sesiones de los usuarios.
+Desarrollado en **PHP** con Vanilla CSS y JavaScript dinámico. Interactúa de forma asíncrona con el backend:
+* **Catálogo interactivo** con filtrado por categoría, perfil de uso y buscador textual.
+* **Ficha de detalle** especializada por categoría mostrando especificaciones completas y el comparador de precios por tienda.
+* **Gestión de Sesión segura** persistida de forma nativa en PHP.
 
 ### 2. Backend (API REST)
-Desarrollado en **Python con Flask**. Expone los endpoints necesarios para el frontend. Implementa una arquitectura en capas:
-- **Controladores (App)**: Manejo de rutas y peticiones HTTP (`app.py`).
-- **Servicios**: Lógica de negocio y procesamiento de datos.
-- **DAO (Data Access Object)**: Capa exclusiva para la comunicación segura con la base de datos MySQL (`producto_dao.py`, `usuario_dao.py`, etc.).
-- **Modelos**: Representación orientada a objetos de las entidades (Productos, Laptops, CPUs, Usuarios).
+Construido en **Python con Flask** y organizado según una arquitectura en capas:
+* **Controlador (`app.py`)**: Define las rutas HTTP y gestiona las solicitudes entrantes.
+* **Servicios (`servicios/`)**: Contiene la lógica de negocio (reglas de comparación, autenticación y favoritos).
+* **DAO (`dao/`)**: Capa de persistencia dedicada. Implementa consultas seguras a MySQL para las 18 tablas del sistema.
+* **Modelos (`modelos/`)**: Representa las entidades de datos (Laptop, CPU, GPU, RAM, Almacenamiento, Usuario, etc.).
 
 ### 3. Motor de Scraping (Bots)
-Un conjunto de scripts automatizados en Python (utilizando **Selenium** y **BeautifulSoup**) orquestados por `run_bots.py`.
-- **Scrapers de Especificaciones**: Extraen datos técnicos de sitios oficiales (ej. ASUS, Lenovo, AMD, Intel).
-- **Scrapers de Retailers**: Extraen precios y disponibilidad de tiendas online (ej. MercadoLibre, Compra Gamer).
-
-### 4. Base de Datos
-Base de datos relacional **MySQL** centralizada. Almacena de manera estructurada las relaciones entre productos, categorías, marcas, perfiles de uso, tiendas y especificaciones técnicas.
+Automatización orquestada por `run_bots.py` dividida en tres fases secuenciales:
+1. **Fabricantes de Laptops**: Extrae especificaciones reales y dimensiones físicas directamente desde los portales de *ASUS* y *Lenovo (PSREF)*.
+2. **Fabricantes de Componentes**: Carga características técnicas avanzadas de CPUs oficiales desde los portales de *AMD* e *Intel*.
+3. **Retailers**: Busca precios e imágenes en *Compra Gamer* y *Mercado Libre*, vinculándolos a los modelos del catálogo oficial y mapeando especificaciones sobre la marcha para componentes nuevos mediante expresiones regulares en `normalizacion.py`.
 
 ---
 
-## 🛠️ Tecnologías Utilizadas
-
-- **Frontend**: PHP, HTML5, CSS3, JavaScript.
-- **Backend**: Python 3.x, Flask, Flask-CORS.
-- **Scraping**: Selenium WebDriver, BeautifulSoup4, Requests, lxml.
-- **Base de Datos**: MySQL (Conector: `mysql-connector-python`).
-- **Seguridad**: `bcrypt` para el hasheo de contraseñas.
-
----
-
-## 📂 Estructura del Proyecto
+## 📂 Estructura del Directorio Principal
 
 ```text
-/
-├── backend/                  # API REST y Motor de Scraping
-│   ├── app.py                # Punto de entrada de la API Flask
-│   ├── config.py             # Configuraciones del sistema y BD
-│   ├── run_bots.py           # Orquestador del motor de scraping
-│   ├── Requerimientos.txt    # Dependencias de Python
-│   ├── dao/                  # Data Access Objects (Capa de Base de Datos)
-│   ├── database/             # Conexión a MySQL (Patrón Singleton)
-│   ├── modelos/              # Clases de dominio (Producto, Laptop, Usuario, etc.)
-│   ├── scrapers/             # Scripts de extracción de datos (Bots)
-│   └── servicios/            # Lógica de negocio (Auth, Comparaciones, etc.)
-├── frontend/                 # Interfaz de Usuario en PHP
-│   ├── index.php / etc.      # Vistas y lógica de presentación
-│   ├── assets/               # Recursos estáticos (CSS, JS, Imágenes)
-│   └── componentes/          # Componentes reutilizables de UI
-└── sql/                      # Scripts de base de datos
+TechMatch/
+├── backend/                       # API REST y Automatización de Scraping
+│   ├── app.py                     # Punto de entrada de la API Flask
+│   ├── config.py                  # Parámetros del sistema y credenciales de BD
+│   ├── run_bots.py                # Orquestador del scraping diario
+│   ├── Requerimientos.txt         # Dependencias del backend Python
+│   ├── dao/                       # Capa exclusiva de Acceso a Datos (MySQL)
+│   ├── database/                  # Manejo de conexión única (Singleton)
+│   ├── modelos/                   # Clases de dominio de hardware y usuario
+│   ├── scrapers/                  # Scripts de web scraping (Selenium y bs4)
+│   ├── servicios/                 # Lógica de negocio (comparación, auth, etc.)
+│   └── utils/                     # Normalización de títulos y validación cruzada
+├── frontend/                      # Cliente web
+│   ├── index.php                  # Página principal de bienvenida
+│   ├── catalogo.php               # Grilla de productos con filtros
+│   ├── detalle_producto.php       # Ficha técnica y ofertas de compra
+│   ├── comparar.php               # Comparador lado a lado con veredicto
+│   ├── componentes/               # Navbar, footer y product cards reutilizables
+│   └── assets/                    # Hojas de estilo y controladores JavaScript (api.js, etc.)
+└── sql/                           # Scripts SQL de estructura e inicialización
 ```
 
 ---
 
-## ⚙️ Configuración e Instalación
+## ⚙️ Instalación y Configuración
 
-### Requisitos Previos
-- Servidor Web para PHP (ej. Laragon, XAMPP).
-- Python 3.8 o superior.
-- MySQL Server.
-- Navegador Chrome (para Selenium).
+### 1. Base de Datos (MySQL)
+1. Crea una base de datos vacía llamada `techmatch`.
+2. Importa el esquema completo del proyecto:
+   ```bash
+   mysql -u tu_usuario -p techmatch < sql/techmatch.sql
+   ```
+3. Opcionalmente, importa datos iniciales de soporte si necesitas refrescar marcas y categorías:
+   ```bash
+   mysql -u tu_usuario -p techmatch < sql/crear_tablas_nuevas.sql
+   ```
 
-### Instalación del Backend y Bots
-1. Navegar al directorio `backend`:
+### 2. Backend (Flask API)
+1. Navega al directorio backend:
    ```bash
    cd backend
    ```
-2. Crear un entorno virtual e instalar las dependencias:
+2. Crea un entorno virtual e instala las dependencias:
    ```bash
    python -m venv venv
-   source venv/bin/activate  # En Windows: venv\Scripts\activate
+   # En Windows
+   venv\Scripts\activate
+   # En Linux / macOS
+   source venv/bin/activate
+
    pip install -r Requerimientos.txt
    ```
-3. Configurar las variables de entorno o editar `config.py` con las credenciales de la base de datos.
-4. Iniciar el servidor Flask:
+3. Revisa la configuración de conexión en [config.py](file:///x:/backend/config.py) (puedes ajustar el host, puerto, usuario y contraseña de MySQL).
+4. Ejecuta el servidor Flask:
    ```bash
    python app.py
    ```
+   *La API correrá por defecto en `http://localhost:5000`.*
 
-### Instalación del Frontend
-1. Colocar el contenido de la carpeta `frontend` en el directorio público del servidor web (ej. `www` en Laragon o `htdocs` en XAMPP).
-2. Asegurarse de que las llamadas a la API en JS apunten a la URL correcta del backend (por defecto `http://localhost:5000/api/`).
+### 3. Frontend (PHP)
+1. Copia o enlaza la carpeta `frontend/` al directorio raíz de tu servidor Apache/Nginx (por ejemplo, `www/` en Laragon o `htdocs/` en XAMPP).
+2. Asegúrate de configurar la URL de tu API backend Flask en [config/api.php](file:///x:/frontend/config/api.php).
 
 ---
 
-## 🤖 Ejecución del Motor de Scraping
+## 🤖 Ejecución del Scraping e Ingesta
 
-Para actualizar el catálogo con los últimos productos y precios, ejecutar el orquestador de bots:
+Para actualizar precios y poblar nuevos componentes, ejecuta el orquestador principal:
 
 ```bash
 cd backend
 python run_bots.py
 ```
 
-Este script ejecutará secuencialmente:
-1. **Bots de Retailers**: Actualización de precios desde tiendas.
-2. **Bots de Fabricantes (Laptops)**: Extracción de specs de equipos completos.
-3. **Bots de Fabricantes (Componentes)**: Extracción de specs de piezas individuales (CPUs, etc.).
+### Automatización en Servidor (Cron Job)
+Para que el catálogo se actualice automáticamente en segundo plano todas las noches a las **3:00 AM**, se incluye el script autoinstalable [setup_cron.sh](file:///x:/setup_cron.sh). Para configurarlo, dale permisos y ejecútalo en el entorno Linux de producción:
+
+```bash
+chmod +x setup_cron.sh
+./setup_cron.sh
+```
 
 ---
 
-## 📡 Endpoints de la API Principal
+## 📡 Endpoints de la API REST
 
-- `POST /api/register`: Registro de nuevos usuarios.
-- `POST /api/login`: Autenticación de usuarios.
-- `GET /api/productos`: Obtener el catálogo filtrado (soporta parámetros `categoria`, `perfil`, `busqueda`).
-- `GET /api/comparar`: Comparar dos productos (requiere `idA`, `idB` y `perfil`).
+### Autenticación
+* `POST /api/register`: Registra un nuevo usuario (`email_usuario`, `pass_usuario`, `nombre_usuario`).
+* `POST /api/login`: Inicia sesión devolviendo información del usuario.
+
+### Catálogo y Filtros
+* `GET /api/productos`: Lista de productos filtrados.
+  * *Parámetros opcionales*: `categoria` (Laptop, CPU, GPU, RAM, Almacenamiento), `perfil` (Gaming, Desarrollo, Ofimatica, Diseno), `busqueda` (texto libre).
+* `GET /api/productos/<int:id>`: Detalle extendido de un producto específico, incluyendo sus características técnicas específicas por categoría y la lista de precios por tienda.
+
+### Comparación y Favoritos
+* `GET /api/comparar`: Compara dos productos de la misma categoría.
+  * *Parámetros obligatorios*: `idA` (ID producto 1), `idB` (ID producto 2), `perfil` (Perfil de uso de referencia).
+* `GET /api/favoritos`: Recupera los productos marcados como favoritos por el usuario actual.
+* `POST /api/favoritos`: Agrega o remueve un producto de favoritos.
