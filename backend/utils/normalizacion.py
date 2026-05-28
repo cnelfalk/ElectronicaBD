@@ -62,7 +62,7 @@ def extraer_specs_de_titulo(titulo):
     # Valores por defecto
     ram = 8
     almacenamiento = 256
-    cpu_modelo = "Intel Core i5"
+    cpu_modelo = "Desconocido"
     
     # 1. Extraer RAM
     ram_match = re.search(r'\b(4|8|12|16|24|32|64)\s*(?:gb|g)\s*(?:ram|ddr\d)?\b', titulo_lower)

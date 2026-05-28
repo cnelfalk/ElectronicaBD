@@ -80,6 +80,10 @@ class ProductoDAO:
                      capacidadBateriaWh, cpuModelo, gpuModelo, ramGb, almacenamientoGb,
                      precio, urlProducto, nombreTienda):
 
+        if not cpuModelo or cpuModelo.strip() == "" or cpuModelo.lower() in ["desconocido", "none", "null"]:
+            print(f"// upsertLaptop: Laptop '{modelo}' salteada por no tener un procesador definido.")
+            return
+
         cursor = self.conexion.cursor(dictionary=True)
         try:
             # Verificar si el modelo ya existe para evitar duplicados
@@ -189,6 +193,25 @@ class ProductoDAO:
                     break
 
             if not idProducto:
+                # Validar calidad antes de crear un nuevo producto
+                if nombreCategoria == 'Laptop':
+                    specs = extraer_specs_de_titulo(modelo)
+                    cpu = specs.get('cpu_modelo')
+                    if not cpu or cpu.strip() == "" or cpu.lower() in ["desconocido", "none", "null"]:
+                        print(f"// upsertProductoRetail: Nueva Laptop '{modelo}' salteada por no tener procesador válido en el título.")
+                        return
+
+                elif nombreCategoria == 'CPU':
+                    modelo_lower = modelo.lower()
+                    console_terms = ["consola", "playstation", "ps5", "ps4", "xbox", "nintendo", "switch", "gamepad", "joystick"]
+                    if any(term in modelo_lower for term in console_terms):
+                        print(f"// upsertProductoRetail: Nuevo CPU '{modelo}' salteado por ser una consola o periférico.")
+                        return
+                    cpu_keywords = ['procesador', 'ryzen', 'core i', 'intel core', 'athlon', 'threadripper', 'celeron', 'pentium', 'xeon']
+                    if not any(kw in modelo_lower for kw in cpu_keywords):
+                        print(f"// upsertProductoRetail: Nuevo CPU '{modelo}' salteado por falta de palabras clave de procesador.")
+                        return
+
                 # Producto nuevo: inserción completa
                 cursor.execute(
                     "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
@@ -275,6 +298,12 @@ class ProductoDAO:
 
     # upsertCPU - Inserta un procesador o lo saltea si el modelo ya existe.
     def upsertCPU(self, modelo, nucleos, hilos, frecBase, frecTurbo, tdp, urlReferencia):
+        modelo_lower = modelo.lower()
+        console_terms = ["consola", "playstation", "ps5", "ps4", "xbox", "nintendo", "switch", "gamepad", "joystick"]
+        if any(term in modelo_lower for term in console_terms):
+            print(f"// upsertCPU: CPU '{modelo}' salteada por ser una consola.")
+            return
+
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
