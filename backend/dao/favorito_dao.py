@@ -24,11 +24,11 @@ class FavoritoDAO:
 
     def obtenerFavoritosPorUsuario(self, idUsuario):
         query = """
-            SELECT 
-                p.id_producto, 
-                p.modelo_producto as modelo, 
-                p.img_url, 
-                c.nombre_categoria as categoria, 
+            SELECT
+                p.id_producto,
+                p.modelo_producto as modelo,
+                p.img_url,
+                c.nombre_categoria as categoria,
                 m.nombre_marca as marca,
                 gf.fecha_agregado_fav
             FROM guarda_favorito gf
@@ -38,15 +38,15 @@ class FavoritoDAO:
             WHERE gf.id_usuario = %s
             ORDER BY gf.fecha_agregado_fav DESC
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idUsuario,))
-            resultados = cursor.fetchall()
-            cursor.close()
-            return resultados
+            return cursor.fetchall()
         except Exception as e:
             print(f"// errorObtenerFavoritos: {e}")
             return []
+        finally:
+            cursor.close()
 
     def eliminarFavorito(self, idUsuario, idProducto):
         query = "DELETE FROM guarda_favorito WHERE id_usuario = %s AND id_producto = %s"

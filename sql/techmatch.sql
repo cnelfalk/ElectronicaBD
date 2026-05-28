@@ -536,6 +536,17 @@ END$$
 DELIMITER ;
 
 
+-- -----------------------------------------------------
+-- Datos iniciales: Tiendas conocidas
+-- (requerido para que los scrapers guarden precios en se_vende_en)
+-- -----------------------------------------------------
+INSERT IGNORE INTO `techmatch`.`tiendas` (`nombre_tienda`, `url_tienda`) VALUES
+('Mercado Libre',  'https://www.mercadolibre.com.ar'),
+('Compra Gamer',   'https://www.compragamer.com'),
+('Asus Oficial',   'https://www.asus.com/ar'),
+('Lenovo Oficial', 'https://www.lenovo.com/ar');
+
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;

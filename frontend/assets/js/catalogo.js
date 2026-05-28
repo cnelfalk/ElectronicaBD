@@ -84,16 +84,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const cardHTML = `
                 <div class="tm-card">
-                    <div class="tm-card-img">
-                        ${imgSrc
-                            ? `<img src="${imgSrc}" alt="${producto.modelo}" 
-                                    onerror="this.style.display='none'; this.parentElement.innerHTML = generarPlaceholder('${producto.marca}');">`
-                            : generarPlaceholder(producto.marca)
-                        }
-                    </div>
+                    <a href="detalle_producto.php?id=${producto.id_producto}" class="tm-card-img-link">
+                        <div class="tm-card-img">
+                            ${imgSrc
+                                ? `<img src="${imgSrc}" alt="${producto.modelo}" 
+                                        onerror="this.style.display='none'; this.parentElement.innerHTML = generarPlaceholder('${producto.marca}');">`
+                                : generarPlaceholder(producto.marca)
+                            }
+                        </div>
+                    </a>
                     <div class="tm-card-body">
                         <span class="tm-card-badge ${badgeClass}">${producto.categoria}</span>
-                        <h3 class="tm-card-title" title="${producto.modelo}">${producto.modelo}</h3>
+                        <a href="detalle_producto.php?id=${producto.id_producto}" class="tm-card-title-link">
+                            <h3 class="tm-card-title" title="${producto.modelo}">${producto.modelo}</h3>
+                        </a>
                         <p class="tm-card-brand">${producto.marca}</p>
                         <div class="tm-card-actions">
                             <button class="tm-btn tm-btn-outline tm-btn-sm" data-id="${producto.id_producto}" data-categoria="${producto.categoria}" data-modelo="${producto.modelo}" onclick="agregarComparar(this)">
@@ -118,7 +122,8 @@ document.addEventListener('DOMContentLoaded', () => {
             'CPU': 'tm-badge-cpu',
             'GPU': 'tm-badge-gpu',
             'RAM': 'tm-badge-ram',
-            'Laptop': 'tm-badge-laptop'
+            'Laptop': 'tm-badge-laptop',
+            'Almacenamiento': 'tm-badge-storage'
         };
         return clases[categoria] || 'tm-badge-laptop';
     }

@@ -79,7 +79,23 @@ def obtenerProductosEndpoint():
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
 
-# compararEndpoint - Ruta GET para evaluar dos equipos (Laptops o CPUs)
+# detalleProductoEndpoint - Ruta GET para obtener el detalle completo de un producto
+@app.route('/api/productos/<int:idProducto>', methods=['GET'])
+def detalleProductoEndpoint(idProducto):
+    try:
+        from dao.producto_dao import ProductoDAO
+        dao = ProductoDAO()
+        detalle = dao.obtenerDetalleProducto(idProducto)
+
+        if not detalle:
+            return jsonify({'success': False, 'mensaje': 'Producto no encontrado.'}), 404
+
+        return jsonify({'success': True, 'data': detalle}), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# compararEndpoint - Ruta GET para evaluar dos equipos (Laptops, CPUs, GPUs, RAM o Almacenamiento)
 @app.route('/api/comparar', methods=['GET'])
 def compararEndpoint():
     try:
@@ -113,11 +129,17 @@ def compararEndpoint():
                 'mensaje': f'No se pueden comparar productos de diferentes categorías ({categoriaA} vs {categoriaB}).'
             }), 400
 
-        # Redirigir al servicio adecuado
+        # Redirigir al servicio adecuado según la categoría
         if categoriaA == 'Laptop':
             resultado = comparacionServicio.generarRecomendacionLaptops(idProductoA, idProductoB, perfilUso)
         elif categoriaA == 'CPU':
             resultado = comparacionServicio.generarRecomendacionCPUs(idProductoA, idProductoB, perfilUso)
+        elif categoriaA == 'GPU':
+            resultado = comparacionServicio.generarRecomendacionGPUs(idProductoA, idProductoB, perfilUso)
+        elif categoriaA == 'RAM':
+            resultado = comparacionServicio.generarRecomendacionRAMs(idProductoA, idProductoB, perfilUso)
+        elif categoriaA == 'Almacenamiento':
+            resultado = comparacionServicio.generarRecomendacionAlmacenamiento(idProductoA, idProductoB, perfilUso)
         else:
             return jsonify({
                 'success': False,
@@ -167,6 +189,56 @@ def eliminarFavoritoEndpoint():
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
 
+@app.route('/api/comparar/guardar', methods=['POST'])
+def guardarComparacionEndpoint():
+    try:
+        datos = request.get_json()
+        idUsuario = datos.get('idUsuario')
+        idProductoA = datos.get('idProductoA')
+        idProductoB = datos.get('idProductoB')
+
+        if not idUsuario or not idProductoA or not idProductoB:
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos (idUsuario, idProductoA, idProductoB)'}), 400
+
+        # Obtener la categoría del producto A
+        categoriaNombre = comparacionServicio.productoDao.obtenerCategoriaPorId(idProductoA)
+        
+        # Buscar el ID correspondiente en la tabla categorias
+        cursor = comparacionServicio.productoDao.conexion.cursor(dictionary=True)
+        cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = %s", (categoriaNombre,))
+        cat_row = cursor.fetchone()
+        cursor.close()
+        
+        idCategoria = cat_row['id_categoria'] if cat_row else 1
+
+        resultado = comparacionServicio.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
+        if resultado:
+            return jsonify({'success': True, 'mensaje': 'Comparación guardada exitosamente'}), 200
+        else:
+            return jsonify({'success': False, 'mensaje': 'Error al guardar la comparación en la base de datos'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+
+@app.route('/api/comparar/historial/<int:idUsuario>', methods=['GET'])
+def obtenerHistorialComparacionesEndpoint(idUsuario):
+    try:
+        historial = comparacionServicio.obtenerComparacionesUsuario(idUsuario)
+        return jsonify({'success': True, 'data': historial}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+@app.route('/api/comparar/<int:idComparacion>', methods=['DELETE'])
+def eliminarComparacionEndpoint(idComparacion):
+    try:
+        resultado = comparacionServicio.eliminarComparacion(idComparacion)
+        if resultado:
+            return jsonify({'success': True, 'mensaje': 'Comparación eliminada exitosamente'}), 200
+        else:
+            return jsonify({'success': False, 'mensaje': 'Error al eliminar la comparación'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
 if __name__ == '__main__':
     # host='0.0.0.0' permite que Flask sea visible en toda la red (incluído Tailscale)
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    app.run(debug=True, port=5000, host='0.0.0.0', use_reloader=True)

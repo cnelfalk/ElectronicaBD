@@ -108,7 +108,7 @@ class CompraGamerScraper(ScraperBase):
     """
     Scraper de RETAILERS — Compra Gamer (compragamer.com).
     Sitio Angular 18: usa WebDriverWait para esperar el renderizado real
-    antes de parsear. Soporta categorías Laptop y CPU.
+    antes de parsear. Soporta categorías Laptop, CPU, GPU, RAM y Almacenamiento.
     """
 
     TIENDA = "Compra Gamer"
@@ -116,18 +116,18 @@ class CompraGamerScraper(ScraperBase):
 
     # IDs reales del parámetro ?cate= en CompraGamer (verificados 21/05/2026)
     CATEGORIAS_URL = {
-        "Laptop":    58,
-        "CPU_AMD":   27,
-        "CPU_Intel": 48,
-        "GPU":        6,
-        "RAM":       15,
+        "Laptop":          58,
+        "CPU_AMD":         27,
+        "CPU_Intel":       48,
+        "GPU":              6,
+        "RAM":             15,
+        "Almacenamiento":  14,
     }
 
     # Accesorios y periféricos que nunca son el producto que buscamos
     EXCLUSIONES = [
         'mouse', 'teclado', 'auricular', 'monitor', 'webcam',
-        'mochila', 'funda', 'placa de video', 'gabinete', 'fuente',
-        'memoria ram', 'silla', 'micro', 'pad', 'headset', 'joystick',
+        'mochila', 'funda', 'silla', 'pad', 'headset', 'joystick',
         'parlante', 'ups', 'cámara', 'camara', 'impresora', 'soporte',
     ]
 
@@ -276,6 +276,8 @@ class CompraGamerScraper(ScraperBase):
         # Para Intel: los CPUs se nombran "Core i9..." sin la palabra "Intel"
         aliases = {
             'intel': ['intel', 'core i3', 'core i5', 'core i7', 'core i9', 'core ultra'],
+            'nvidia': ['nvidia', 'geforce', 'rtx', 'gtx'],
+            'kingston': ['kingston', 'fury', 'hyperx'],
         }
         terminos = aliases.get(self.marca.lower(), [self.marca.lower()])
         if not any(t in modelo_lower for t in terminos):
@@ -285,6 +287,7 @@ class CompraGamerScraper(ScraperBase):
             print(f"  [CG] Filtrado (accesorio): {modelo[:60]}")
             return False
 
+        # ── Filtros específicos por categoría ────────────────────────────────
         if self.categoria == "Laptop" and not any(
             kw in modelo_lower for kw in ['notebook', 'laptop', 'portatil']
         ):
@@ -296,6 +299,30 @@ class CompraGamerScraper(ScraperBase):
                 return False
             # Requerir al menos una keyword de procesador
             if not any(kw in modelo_lower for kw in ['procesador', 'ryzen', 'core i', 'intel core', 'athlon', 'threadripper']):
+                return False
+
+        if self.categoria == "GPU":
+            # Rechazar productos que no son placas de video
+            if any(kw in modelo_lower for kw in ['notebook', 'laptop', 'cable', 'soporte', 'riser']):
+                return False
+            # Requerir keywords de GPU
+            if not any(kw in modelo_lower for kw in ['geforce', 'rtx', 'gtx', 'radeon', 'rx ', 'placa de video']):
+                return False
+
+        if self.categoria == "RAM":
+            # Requerir keywords de RAM
+            if not any(kw in modelo_lower for kw in ['ddr4', 'ddr5', 'ddr3', 'memoria ram', 'ram ']):
+                return False
+            # Excluir notebooks que mencionan RAM
+            if any(kw in modelo_lower for kw in ['notebook', 'laptop']):
+                return False
+
+        if self.categoria == "Almacenamiento":
+            # Requerir keywords de almacenamiento
+            if not any(kw in modelo_lower for kw in ['ssd', 'hdd', 'nvme', 'm.2', 'disco']):
+                return False
+            # Excluir gabinetes/carcasas de disco
+            if any(kw in modelo_lower for kw in ['gabinete', 'carcasa', 'carry', 'case', 'adaptador']):
                 return False
 
         # ── Precio ───────────────────────────────────────────────────────────
@@ -331,8 +358,17 @@ class CompraGamerScraper(ScraperBase):
             if not imgUrl.startswith('http'):
                 imgUrl = ""
 
+        # ── Determinar marca del producto para GPU/RAM/Almacenamiento ────────
+        marcaProducto = self.marca
+        if self.categoria == "GPU":
+            # Las GPUs de CompraGamer pueden ser de múltiples fabricantes
+            if any(k in modelo_lower for k in ['nvidia', 'geforce', 'rtx', 'gtx']):
+                marcaProducto = "NVIDIA"
+            elif any(k in modelo_lower for k in ['radeon', 'rx ']):
+                marcaProducto = "AMD"
+
         self.dao.upsertProductoRetail(
-            modelo, imgUrl, self.marca,
+            modelo, imgUrl, marcaProducto,
             self.categoria,
             precio, urlVenta, self.TIENDA
         )

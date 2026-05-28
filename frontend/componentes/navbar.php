@@ -19,6 +19,8 @@
 
             <!-- Estado: logueado (oculto hasta que JS lo muestre) -->
             <div id="nav-con-sesion" style="display:none;" class="tm-nav-actions">
+                <a href="favoritos.php" class="tm-nav-link" style="font-size: 0.85rem;">❤️ Mis Favoritos</a>
+                <a href="comparaciones_guardadas.php" class="tm-nav-link" style="font-size: 0.85rem;">⚖️ Mis Comparaciones</a>
                 <span style="color: var(--tm-text-secondary); font-size: 0.85rem;" id="nav-nombre-usuario"></span>
                 <button class="tm-btn tm-btn-ghost tm-btn-sm" onclick="cerrarSesion()">Salir</button>
             </div>

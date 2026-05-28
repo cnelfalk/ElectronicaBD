@@ -75,13 +75,15 @@ class ComparacionDAO:
                 SELECT 
                     cg.id_comparacion,
                     cg.fec_creacion_comp as fecha,
+                    cat.nombre_categoria as categoria,
                     GROUP_CONCAT(p.id_producto ORDER BY p.id_producto) as ids_productos,
                     GROUP_CONCAT(p.modelo_producto SEPARATOR ' vs ') as duplas_modelos
                 FROM comparaciones_guardadas cg
                 JOIN contiene c ON cg.id_comparacion = c.id_comparacion
                 JOIN productos p ON c.id_producto = p.id_producto
+                JOIN categorias cat ON cg.id_categoria = cat.id_categoria
                 WHERE cg.id_usuario = %s
-                GROUP BY cg.id_comparacion
+                GROUP BY cg.id_comparacion, cat.nombre_categoria
                 ORDER BY cg.fec_creacion_comp DESC
             """
             cursor.execute(sql, (id_usuario,))

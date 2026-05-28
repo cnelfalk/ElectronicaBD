@@ -1,38 +1,29 @@
-console.log("🚀 [PASO 1] favoritos.js fue cargado por el navegador.");
-
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("⚡ [PASO 2] El DOM cargó, iniciando lógica de favoritos...");
     const contenedorFavoritos = document.getElementById('contenedorFavoritos');
 
     try {
         const usuarioInfo = localStorage.getItem('techmatch_usuario');
-        console.log("👤 [PASO 3] Datos en localStorage:", usuarioInfo);
 
         // 1. Verificar si el usuario tiene sesión iniciada
         if (!usuarioInfo) {
-            console.log("❌ [PASO 4] No hay usuario logueado. Redirigiendo a login...");
             window.location.href = 'login.php?redirect=favoritos.php';
             return;
         }
 
         const usuario = JSON.parse(usuarioInfo);
-        console.log("✅ [PASO 5] Usuario detectado:", usuario.nombreUsuario, "(ID:", usuario.idUsuario, ")");
 
         // 2. Función principal para buscar los favoritos
         async function cargarFavoritos() {
             const endpoint = `${API_URL}/favoritos/${usuario.idUsuario}`;
-            console.log("🌐 [PASO 6] Iniciando fetch hacia:", endpoint);
-            
+
             try {
                 const respuesta = await fetch(endpoint);
-                console.log("📥 [PASO 7] Respuesta recibida de Flask. Status:", respuesta.status);
-                
+
                 if (!respuesta.ok) {
                     throw new Error(`Error HTTP del servidor: ${respuesta.status}`);
                 }
 
                 const datosJson = await respuesta.json();
-                console.log("📦 [PASO 8] Datos JSON parseados:", datosJson);
 
                 if (datosJson.success) {
                     renderizarFavoritos(datosJson.data);
@@ -40,7 +31,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     mostrarError(datosJson.mensaje);
                 }
             } catch (error) {
-                console.error('❌ [ERROR EN FETCH]:', error);
+                console.error('Error al cargar favoritos:', error);
                 mostrarError('No se pudo conectar con el servidor. Revisá la consola (F12) para más detalles.');
             }
         }
@@ -48,7 +39,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // 3. Función para dibujar las tarjetas en el HTML
         function renderizarFavoritos(productos) {
             contenedorFavoritos.innerHTML = '';
-            console.log(`🎨 [PASO 9] Renderizando ${productos.length} productos.`);
 
             if (productos.length === 0) {
                 contenedorFavoritos.innerHTML = `
@@ -109,11 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
         cargarFavoritos();
 
     } catch (errorCritico) {
-        // Si JS explota antes del fetch, lo mostramos en la UI para no dejar el spinner
-        console.error("💥 [CRASH FATAL EN JS]:", errorCritico);
+        console.error("Error crítico en favoritos.js:", errorCritico);
         contenedorFavoritos.innerHTML = `
             <div class="tm-empty" style="grid-column: 1 / -1; color: #ef4444;">
-                <div class="tm-empty-icon">💥</div>
+                <div class="tm-empty-icon">⚠️</div>
                 <p>Error crítico en el navegador: ${errorCritico.message}</p>
                 <p style="font-size: 0.8rem;">Revisá la consola presionando F12.</p>
             </div>

@@ -1,5 +1,6 @@
-// IP de Tailscale — actualizar si se despliega en otro ambiente
-var API_URL = 'http://100.82.23.52:5000/api';
+// Cplocar la IP de Tailscale o actualizar si se despliega en otro ambiente
+// Se debe colocar /techmatch/api para que sea accesible públicamente
+var API_URL = '/techmatch/api';
 
 async function apiRequest(endpoint, options = {}) {
     const config = {

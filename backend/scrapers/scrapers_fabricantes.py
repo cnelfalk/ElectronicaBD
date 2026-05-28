@@ -204,61 +204,6 @@ class AsusScraperLaptops(ScraperBase):
             print(f"  [ASUS]   -> Error extrayendo specs de detalle: {e}")
             return None
 
-    def _parsearSpecsDeTexto(self, specs, texto):
-        """Parsea specs tecnicas reales desde un bloque de texto."""
-        # CPU
-        cpu_match = re.search(
-            r'(intel\s+core\s+(?:ultra\s+)?\w+[-\s]\w+|amd\s+ryzen\s+\d+\s*\w*|snapdragon\s+\w+)',
-            texto, re.IGNORECASE
-        )
-        if cpu_match:
-            specs["cpuModelo"] = cpu_match.group(0).strip().title()
-        else:
-            basico = self.extraerSpecsDeTexto(texto)
-            specs["cpuModelo"] = basico["cpuModelo"]
-
-        # GPU
-        gpu_match = re.search(
-            r'(nvidia\s+geforce\s+\w+\s*\w*\s*\w*|amd\s+radeon\s+\w+\s*\w*|intel\s+(?:iris|uhd|arc)\s*\w*)',
-            texto, re.IGNORECASE
-        )
-        if gpu_match:
-            specs["gpuModelo"] = gpu_match.group(0).strip().title()
-
-        # RAM
-        ram_match = re.search(r'(\d+)\s*gb\s*(?:ddr|lpddr|ram|memory)', texto)
-        if ram_match:
-            specs["ramGb"] = int(ram_match.group(1))
-
-        # Almacenamiento
-        alm_match = re.search(r'(\d+)\s*(gb|tb)\s*(?:ssd|nvme|pcie|m\.2|storage|almacenamiento)', texto)
-        if alm_match:
-            valor = int(alm_match.group(1))
-            specs["almacenamientoGb"] = valor * 1000 if alm_match.group(2) == 'tb' else valor
-
-        # Peso
-        peso_match = re.search(r'(\d+[.,]\d+)\s*kg', texto)
-        if peso_match:
-            specs["pesoKg"] = float(peso_match.group(1).replace(',', '.'))
-
-        # Pantalla
-        pantalla_match = re.search(r'(\d+[.,]?\d*)\s*"?\s*(?:pulgadas|inch|fhd|wuxga|oled|ips)', texto)
-        if not pantalla_match:
-            pantalla_match = re.search(r'(\d{2}[.,]\d)\s*"', texto)
-        if pantalla_match:
-            specs["tamanioPantalla"] = float(pantalla_match.group(1).replace(',', '.'))
-
-        # Tasa de refresco
-        hz_match = re.search(r'(\d{2,3})\s*hz', texto)
-        if hz_match:
-            specs["tasaRefrescoHz"] = int(hz_match.group(1))
-
-        # Bateria
-        bat_match = re.search(r'(\d{2,3})\s*wh', texto)
-        if bat_match:
-            specs["capacidadBateriaWh"] = int(bat_match.group(1))
-
-
 class LenovoScraperLaptops(ScraperBase):
     """
     Scraper de ESPECIFICACIONES — Lenovo (PSREF + sitio oficial AR).
@@ -403,60 +348,6 @@ class LenovoScraperLaptops(ScraperBase):
         except Exception as e:
             print(f"  [LENOVO]   -> Error extrayendo specs de PSREF: {e}")
             return None
-
-    def _parsearSpecsDeTexto(self, specs, texto):
-        """Parsea specs tecnicas reales desde un bloque de texto."""
-        # CPU
-        cpu_match = re.search(
-            r'(intel\s+core\s+(?:ultra\s+)?\w+[-\s]\w+|amd\s+ryzen\s+\d+\s*\w*|snapdragon\s+\w+)',
-            texto, re.IGNORECASE
-        )
-        if cpu_match:
-            specs["cpuModelo"] = cpu_match.group(0).strip().title()
-        else:
-            basico = self.extraerSpecsDeTexto(texto)
-            specs["cpuModelo"] = basico["cpuModelo"]
-
-        # GPU
-        gpu_match = re.search(
-            r'(nvidia\s+geforce\s+\w+\s*\w*\s*\w*|amd\s+radeon\s+\w+\s*\w*|intel\s+(?:iris|uhd|arc)\s*\w*)',
-            texto, re.IGNORECASE
-        )
-        if gpu_match:
-            specs["gpuModelo"] = gpu_match.group(0).strip().title()
-
-        # RAM
-        ram_match = re.search(r'(\d+)\s*gb\s*(?:ddr|lpddr|ram|memory|soldered)', texto)
-        if ram_match:
-            specs["ramGb"] = int(ram_match.group(1))
-
-        # Almacenamiento
-        alm_match = re.search(r'(\d+)\s*(gb|tb)\s*(?:ssd|nvme|pcie|m\.2|storage)', texto)
-        if alm_match:
-            valor = int(alm_match.group(1))
-            specs["almacenamientoGb"] = valor * 1000 if alm_match.group(2) == 'tb' else valor
-
-        # Peso
-        peso_match = re.search(r'(\d+[.,]\d+)\s*kg', texto)
-        if peso_match:
-            specs["pesoKg"] = float(peso_match.group(1).replace(',', '.'))
-
-        # Pantalla
-        pantalla_match = re.search(r'(\d+[.,]?\d*)\s*"?\s*(?:pulgadas|inch|fhd|wuxga|wqxga|oled|ips|display)', texto)
-        if not pantalla_match:
-            pantalla_match = re.search(r'(\d{2}[.,]\d)\s*"', texto)
-        if pantalla_match:
-            specs["tamanioPantalla"] = float(pantalla_match.group(1).replace(',', '.'))
-
-        # Tasa de refresco
-        hz_match = re.search(r'(\d{2,3})\s*hz', texto)
-        if hz_match:
-            specs["tasaRefrescoHz"] = int(hz_match.group(1))
-
-        # Bateria
-        bat_match = re.search(r'(\d{2,3})\s*wh', texto)
-        if bat_match:
-            specs["capacidadBateriaWh"] = int(bat_match.group(1))
 
     def _scrapearSitioConsumidor(self, driver):
         """Fallback: extrae datos desde el sitio consumidor de Lenovo AR."""

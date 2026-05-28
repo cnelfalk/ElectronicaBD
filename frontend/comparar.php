@@ -50,6 +50,13 @@
                 <p class="tm-winner-motivo" id="ganadorMotivo">Justificación de la recomendación basada en el perfil de uso seleccionado.</p>
             </div>
 
+            <!-- Botón para guardar comparación -->
+            <div style="margin-top: -1rem; margin-bottom: 2.5rem; display: flex; justify-content: center;">
+                <button id="btnGuardarComparacion" class="tm-btn tm-btn-primary" style="display: none; align-items: center; gap: 0.5rem; font-size: 0.9rem; padding: 0.75rem 2rem; border-radius: 8px;">
+                    💾 Guardar Comparación
+                </button>
+            </div>
+
             <div class="tm-compare-grid">
                 <!-- Tabla Side-by-Side -->
                 <div>
@@ -100,7 +107,7 @@
 
     <?php include 'componentes/footer.php'; ?>
 
-    <script src="assets/js/api.js"></script>
-    <script src="assets/js/comparacion.js"></script>
+    <script src="assets/js/api.js?v=<?php echo time(); ?>"></script>
+    <script src="assets/js/comparacion.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>

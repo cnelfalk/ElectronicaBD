@@ -10,6 +10,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const compareContenido = document.getElementById('comparacionContenido');
     const errorMensaje = document.getElementById('errorMensaje');
     const selectPerfilUso = document.getElementById('perfilUso');
+    const btnGuardarComparacion = document.getElementById('btnGuardarComparacion');
+
+    // Obtener información del usuario logueado
+    const usuarioInfo = localStorage.getItem('techmatch_usuario');
+    let usuario = null;
+    if (usuarioInfo) {
+        usuario = JSON.parse(usuarioInfo);
+    }
 
     const ganadorNombre = document.getElementById('ganadorNombre');
     const ganadorMotivo = document.getElementById('ganadorMotivo');
@@ -43,6 +51,43 @@ document.addEventListener('DOMContentLoaded', () => {
     selectPerfilUso.addEventListener('change', () => {
         cargarComparacion(selectPerfilUso.value);
     });
+
+    // Escuchar el botón de Guardar Comparación
+    if (btnGuardarComparacion) {
+        btnGuardarComparacion.addEventListener('click', async () => {
+            if (!usuario) return;
+            
+            btnGuardarComparacion.innerHTML = '⏳ Guardando...';
+            btnGuardarComparacion.disabled = true;
+
+            try {
+                const respuesta = await fetch(`${API_URL}/comparar/guardar`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        idUsuario: usuario.idUsuario,
+                        idProductoA: parseInt(idA),
+                        idProductoB: parseInt(idB)
+                    })
+                });
+
+                const datosJson = await respuesta.json();
+                if (datosJson.success) {
+                    btnGuardarComparacion.innerHTML = '✅ Guardada en Mis Comparaciones';
+                    btnGuardarComparacion.style.opacity = '0.7';
+                } else {
+                    alert(datosJson.mensaje || 'Error al guardar la comparación.');
+                    btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
+                    btnGuardarComparacion.disabled = false;
+                }
+            } catch (error) {
+                console.error('Error al guardar comparación:', error);
+                alert('No se pudo guardar la comparación. Verificá tu conexión.');
+                btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
+                btnGuardarComparacion.disabled = false;
+            }
+        });
+    }
 
     // Cargar comparación inicial
     cargarComparacion(selectPerfilUso.value);
@@ -87,6 +132,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ganadorNombre.textContent = data.ganador;
         ganadorMotivo.textContent = data.motivo;
 
+        // Mostrar botón de guardar si el usuario está logueado
+        if (usuario && btnGuardarComparacion) {
+            btnGuardarComparacion.style.display = 'inline-flex';
+            btnGuardarComparacion.disabled = false;
+            btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
+            btnGuardarComparacion.style.opacity = '1';
+        }
+
         // 2. Cabeceras de tabla y títulos
         nombreProductoA.textContent = data.datosA.modelo;
         nombreProductoB.textContent = data.datosB.modelo;
@@ -100,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let specs = [];
         if (isLaptop) {
             specs = [
-                { label: 'Procesador (CPU)', valA: data.datosA.cpu_modelo, valB: data.datosB.cpu_modelo, highlight: false },
+                { label: 'Procesador (CPU)', valA: data.datosA.cpu_modelo, valB: data.datosB.cpu_modelo, rawA: data.datosA.cpu_score, rawB: data.datosB.cpu_score, highlight: true },
                 { label: 'Placa de Video (GPU)', valA: data.datosA.gpu_modelo, valB: data.datosB.gpu_modelo, highlight: false },
                 { label: 'Memoria RAM', valA: `${data.datosA.ram_gb} GB`, valB: `${data.datosB.ram_gb} GB`, rawA: data.datosA.ram_gb, rawB: data.datosB.ram_gb, highlight: true },
                 { label: 'Almacenamiento', valA: `${data.datosA.almacenamiento_gb} GB`, valB: `${data.datosB.almacenamiento_gb} GB`, rawA: data.datosA.almacenamiento_gb, rawB: data.datosB.almacenamiento_gb, highlight: true },

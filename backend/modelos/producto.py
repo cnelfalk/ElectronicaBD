@@ -8,3 +8,14 @@ class Producto:
         self.urlOficial = urlOficial
         self.idCategoria = idCategoria
         self.idMarca = idMarca
+
+    # to_dict - convierte la instancia en un diccionario
+    def to_dict(self):
+        return {
+            "idProducto": self.idProducto,
+            "modeloProducto": self.modeloProducto,
+            "imgUrl": self.imgUrl,
+            "urlOficial": self.urlOficial,
+            "idCategoria": self.idCategoria,
+            "idMarca": self.idMarca
+        }
