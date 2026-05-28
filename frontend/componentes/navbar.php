@@ -39,8 +39,11 @@
         }
     })();
 
-    function cerrarSesion() {
+    async function cerrarSesion() {
         localStorage.removeItem('techmatch_usuario');
+        try {
+            await fetch('utils/clear_session.php');
+        } catch(e) {}
         window.location.href = 'catalogo.php';
     }
 </script>

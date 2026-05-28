@@ -75,6 +75,12 @@
 
                 if (datos.success) {
                     localStorage.setItem('techmatch_usuario', JSON.stringify(datos.datos));
+                    // Sincronizar con la sesión de PHP
+                    await fetch('utils/set_session.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(datos.datos)
+                    });
                     const params = new URLSearchParams(window.location.search);
                     window.location.href = params.get('redirect') || 'catalogo.php';
                 } else {

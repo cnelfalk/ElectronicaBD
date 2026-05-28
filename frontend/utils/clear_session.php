@@ -1,15 +1,12 @@
 <?php
 # ═══════════════════════════════════════════════════════════════════════════
-# api.php — Configuración de la API para el Frontend de TechMatch
+# clear_session.php — Endpoint para sincronizar el logout de JS con la sesión PHP
 # ═══════════════════════════════════════════════════════════════════════════
 
-// IP del servidor Linux Mint que aloja la API Flask (red local o Tailscale)
-define('API_HOST', '100.82.23.52');
-define('API_PORT', '5000');
+require_once 'session.php';
 
-// URL Base de la API REST para su uso en PHP
-define('API_URL_PHP', 'http://' . API_HOST . ':' . API_PORT . '/api');
+header('Content-Type: application/json');
 
-// URL Base de la API REST para exportar a JavaScript
-define('API_URL_JS', 'http://' . API_HOST . ':' . API_PORT . '/api');
+logout_usuario();
+echo json_encode(['success' => true, 'mensaje' => 'Sesión PHP destruida']);
 ?>
