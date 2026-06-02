@@ -13,11 +13,13 @@ productos sin specs y luego los fabricantes no podrian actualizarlos correctamen
 """
 import sys
 import os
+import time
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from scrapers.scrapers_especificaciones import MercadoLibreScraper, CompraGamerScraper
 from scrapers.scrapers_fabricantes import AsusScraperLaptops, LenovoScraperLaptops
 from scrapers.scrapers_componentes import AMDScraperCPU, IntelScraperCPU
+from scrapers.scraper_imagenes import ScraperImagenes
 
 
 def ejecutarBot(nombre, bot):
@@ -30,6 +32,10 @@ def ejecutarBot(nombre, bot):
     except Exception as e:
         print(f"  [ERROR] {nombre} fallo: {e}")
         print("  El resto de los bots continuara igual.")
+    
+    # Pausa de cortesia para evitar bloqueos por rate-limiting
+    print("  [INFO] Esperando un momento antes del siguiente bot...")
+    time.sleep(6)
 
 
 if __name__ == "__main__":
@@ -69,6 +75,10 @@ if __name__ == "__main__":
 
     # --- Almacenamiento ---
     ejecutarBot("Compra Gamer — Almacenamiento", CompraGamerScraper("Kingston", "Almacenamiento"))
+
+    # ── PASO 4: Buscar imágenes faltantes (se ejecuta al final) ─
+    print("\n  >>> FASE 4: Buscando imágenes faltantes en MercadoLibre...")
+    ejecutarBot("Scraper de Imágenes — MercadoLibre", ScraperImagenes())
 
     print("\n" + "="*55)
     print("   SCRAPING COMPLETO")

@@ -65,17 +65,23 @@ def loginUsuarioEndpoint():
 @app.route('/api/productos', methods=['GET'])
 def obtenerProductosEndpoint():
     try:
-        # extraerParametrosUrl - captura las variables enviadas por JS (ej: ?categoria=GPU)
         categoria = request.args.get('categoria')
-        perfil = request.args.get('perfil')
-        busqueda = request.args.get('busqueda')
+        perfil    = request.args.get('perfil')
+        busqueda  = request.args.get('busqueda')
+        marca     = request.args.get('marca')
+        ordenar   = request.args.get('ordenar')
 
-        # delegarAlServicio - pasa los filtros al intermediario de negocio
-        resultado = productoServicio.listarProductos(categoria, perfil, busqueda)
-        
-        # retornarJson - envia el paquete al navegador
+        resultado = productoServicio.listarProductos(categoria, perfil, busqueda, marca, ordenar)
         return jsonify(resultado), 200
 
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# obtenerMarcasEndpoint - ruta GET para listar marcas con productos (para poblar el filtro del catálogo)
+@app.route('/api/marcas', methods=['GET'])
+def obtenerMarcasEndpoint():
+    try:
+        return jsonify(productoServicio.obtenerMarcas()), 200
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
 
@@ -83,9 +89,7 @@ def obtenerProductosEndpoint():
 @app.route('/api/productos/<int:idProducto>', methods=['GET'])
 def detalleProductoEndpoint(idProducto):
     try:
-        from dao.producto_dao import ProductoDAO
-        dao = ProductoDAO()
-        detalle = dao.obtenerDetalleProducto(idProducto)
+        detalle = productoServicio.obtenerDetalle(idProducto)
 
         if not detalle:
             return jsonify({'success': False, 'mensaje': 'Producto no encontrado.'}), 404
@@ -200,16 +204,8 @@ def guardarComparacionEndpoint():
         if not idUsuario or not idProductoA or not idProductoB:
             return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos (idUsuario, idProductoA, idProductoB)'}), 400
 
-        # Obtener la categoría del producto A
-        categoriaNombre = comparacionServicio.productoDao.obtenerCategoriaPorId(idProductoA)
-        
-        # Buscar el ID correspondiente en la tabla categorias
-        cursor = comparacionServicio.productoDao.conexion.cursor(dictionary=True)
-        cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = %s", (categoriaNombre,))
-        cat_row = cursor.fetchone()
-        cursor.close()
-        
-        idCategoria = cat_row['id_categoria'] if cat_row else 1
+        # Obtener el id_categoria numerico directo desde el DAO (sin abrir cursores en el controlador)
+        idCategoria = comparacionServicio.productoDao.obtenerIdCategoriaNumerica(idProductoA)
 
         resultado = comparacionServicio.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
         if resultado:

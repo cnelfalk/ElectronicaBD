@@ -279,10 +279,16 @@
                 preciosHTML = `<div class="tm-no-prices">Este producto aún no tiene precios registrados en tiendas.</div>`;
             }
 
-            // Imagen
+            // Imagen con ícono por categoría cuando no hay foto
+            const iconosCategoria = {
+                'CPU': '🔲', 'GPU': '🎮', 'RAM': '💾',
+                'Laptop': '💻', 'Almacenamiento': '📀'
+            };
+            const iconoFallback = iconosCategoria[producto.categoria] || '📦';
+
             const imgHTML = producto.img_url
-                ? `<img src="${producto.img_url}" alt="${producto.modelo}" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'font-size:3rem;\\'>📦</div>';">`
-                : `<div style="font-size:3rem;">📦</div>`;
+                ? `<img src="${producto.img_url}" alt="${producto.modelo}" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'font-size:3rem;\\'>${iconoFallback}</div>';">`
+                : `<div style="font-size:3rem;">${iconoFallback}</div>`;
 
             container.innerHTML = `
                 <a href="catalogo.php" class="tm-detail-back">← Volver al catálogo</a>
@@ -363,26 +369,22 @@
             ];
         } else if (categoria === 'GPU') {
             items = [
-                { label: 'VRAM', value: `${specs.vram_gb || '-'} GB` },
+                { label: 'VRAM',            value: specs.vram_gb ? `${specs.vram_gb} GB` : '-' },
                 { label: 'Tipo de Memoria', value: specs.tipo_memoria || '-' },
-                { label: 'Bus de Memoria', value: `${specs.bus_bits || '-'} bits` },
-                { label: 'TDP', value: `${specs.tdp_w || '-'} W` },
+                { label: 'TDP',             value: specs.tdp_w   ? `${specs.tdp_w} W`   : '-' },
             ];
         } else if (categoria === 'RAM') {
             items = [
-                { label: 'Capacidad', value: `${specs.capacidad_gb || '-'} GB` },
-                { label: 'Tipo', value: specs.tipo_memoria || '-' },
-                { label: 'Velocidad', value: `${specs.velocidad_mhz || '-'} MHz` },
-                { label: 'Módulos', value: specs.cantidad_modulos || '-' },
-                { label: 'Latencia CAS', value: specs.latencia ? `CL${specs.latencia}` : '-' },
+                { label: 'Capacidad',    value: specs.capacidad_gb  ? `${specs.capacidad_gb} GB`   : '-' },
+                { label: 'Tipo',         value: specs.tipo_memoria || '-' },
+                { label: 'Velocidad',    value: specs.velocidad_mhz ? `${specs.velocidad_mhz} MHz` : '-' },
+                { label: 'Latencia CAS', value: specs.latencia      ? `CL${specs.latencia}`        : '-' },
             ];
         } else if (categoria === 'Almacenamiento') {
             items = [
-                { label: 'Capacidad', value: `${specs.capacidad_gb || '-'} GB` },
-                { label: 'Tipo', value: specs.tipo_disco || '-' },
-                { label: 'Interfaz', value: specs.interfaz || '-' },
-                { label: 'Velocidad Lectura', value: `${specs.velocidad_lectura || '-'} MB/s` },
-                { label: 'Formato', value: specs.formato || '-' },
+                { label: 'Capacidad',         value: specs.capacidad_gb     ? `${specs.capacidad_gb} GB`       : '-' },
+                { label: 'Tipo',              value: specs.tipo_disco || '-' },
+                { label: 'Velocidad Lectura', value: specs.velocidad_lectura ? `${specs.velocidad_lectura} MB/s` : '-' },
             ];
         }
 

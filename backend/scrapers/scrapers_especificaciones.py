@@ -121,7 +121,7 @@ class CompraGamerScraper(ScraperBase):
         "CPU_Intel":       48,
         "GPU":              6,
         "RAM":             15,
-        "Almacenamiento":  14,
+        "Almacenamiento":  81,
     }
 
     # Accesorios y periféricos que nunca son el producto que buscamos
@@ -278,6 +278,7 @@ class CompraGamerScraper(ScraperBase):
             'intel': ['intel', 'core i3', 'core i5', 'core i7', 'core i9', 'core ultra'],
             'nvidia': ['nvidia', 'geforce', 'rtx', 'gtx'],
             'kingston': ['kingston', 'fury', 'hyperx'],
+            'amd': ['amd', 'radeon', 'rx '],
         }
         terminos = aliases.get(self.marca.lower(), [self.marca.lower()])
         if not any(t in modelo_lower for t in terminos):

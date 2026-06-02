@@ -2,15 +2,9 @@ import mysql.connector
 from database.conexion import ConexionDB
 
 class PerfilDAO:
-    def __init__(self, conexion=None):
-        """
-        Constructor del DAO. Si se le pasa una conexión activa, la usa.
-        Si no, inicializa el Singleton global de TechMatch.
-        """
-        if conexion:
-            self.conexion = conexion
-        else:
-            self.conexion = ConexionDB.obtenerInstancia()
+    @property
+    def conexion(self):
+        return ConexionDB.obtenerInstancia()
 
     def obtenerPerfiles(self):
         """Devuelve todos los perfiles de uso disponibles (Gaming, Ofimática, etc.)."""

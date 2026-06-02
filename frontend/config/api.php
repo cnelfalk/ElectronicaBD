@@ -7,9 +7,6 @@
 define('API_HOST', '100.82.23.52');
 define('API_PORT', '5000');
 
-// URL Base de la API REST para su uso en PHP
+// URL Base de la API REST para su uso en PHP (cURL server-side)
 define('API_URL_PHP', 'http://' . API_HOST . ':' . API_PORT . '/api');
-
-// URL Base de la API REST para exportar a JavaScript
-define('API_URL_JS', 'http://' . API_HOST . ':' . API_PORT . '/api');
 ?>

@@ -3,9 +3,9 @@ from modelos.usuario import Usuario
 
 # UsuarioDAO - gestiona las operaciones de base de datos para la entidad usuarios
 class UsuarioDAO:
-    # __init__ - inicializa el DAO obteniendo la conexion unica a la base de datos
-    def __init__(self):
-        self.conexion = ConexionDB.obtenerInstancia()
+    @property
+    def conexion(self):
+        return ConexionDB.obtenerInstancia()
 
     # obtenerPorEmail - busca un usuario especifico utilizando su correo electronico
     def obtenerPorEmail(self, emailUsuario):

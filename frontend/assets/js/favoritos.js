@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // --- FUNCIONES GLOBALES ---
 function obtenerBadgeClass(categoria) {
-    const clases = { 'CPU': 'tm-badge-cpu', 'GPU': 'tm-badge-gpu', 'RAM': 'tm-badge-ram', 'Laptop': 'tm-badge-laptop' };
+    const clases = { 'CPU': 'tm-badge-cpu', 'GPU': 'tm-badge-gpu', 'RAM': 'tm-badge-ram', 'Laptop': 'tm-badge-laptop', 'Almacenamiento': 'tm-badge-storage' };
     return clases[categoria] || 'tm-badge-laptop';
 }
 

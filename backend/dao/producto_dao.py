@@ -3,13 +3,16 @@ from utils.normalizacion import coincide_modelo, extraer_specs_de_titulo, extrae
 
 # ProductoDAO - Capa exclusiva para comunicarse con MySQL. No contiene reglas de negocio.
 class ProductoDAO:
-    # __init__ - Instancia el Singleton de la base de datos para no saturar conexiones en Laragon.
-    def __init__(self):
-        self.conexion = ConexionDB.obtenerInstancia()
+    @property
+    def conexion(self):
+        return ConexionDB.obtenerInstancia()
 
     # obtenerCatalogoFiltrado - Construye consultas SQL dinamicas para la grilla del frontend.
-    # Atributos: categoria (str), perfil (str), busqueda (str)
-    def obtenerCatalogoFiltrado(self, categoria=None, perfil=None, busqueda=None):
+    # Atributos: categoria (str), perfil (str), busqueda (str), marca (str), ordenar (str)
+    def obtenerCatalogoFiltrado(self, categoria=None, perfil=None, busqueda=None, marca=None, ordenar=None):
+        # esPopulares - determina si el usuario quiere ver los productos más guardados como favorito
+        esPopulares = (ordenar == 'populares')
+
         query = """
             SELECT 
                 p.id_producto, 
@@ -17,11 +20,29 @@ class ProductoDAO:
                 p.img_url, 
                 c.nombre_categoria as categoria, 
                 m.nombre_marca as marca
+        """
+
+        # agregarConteoFavoritos - si se ordena por popularidad, agregamos el conteo
+        if esPopulares:
+            query += ", COALESCE(fav_count.total, 0) as total_favoritos"
+
+        query += """
             FROM productos p
             JOIN categorias c ON p.id_categoria = c.id_categoria
             JOIN marcas m ON p.id_marca = m.id_marca
-            WHERE 1=1
         """
+
+        # joinFavoritos - LEFT JOIN con subconsulta de conteo de favoritos
+        if esPopulares:
+            query += """
+                LEFT JOIN (
+                    SELECT id_producto, COUNT(*) as total
+                    FROM guarda_favorito
+                    GROUP BY id_producto
+                ) fav_count ON p.id_producto = fav_count.id_producto
+            """
+
+        query += " WHERE 1=1"
         parametrosSql = []
 
         if categoria:
@@ -32,27 +53,54 @@ class ProductoDAO:
             query += " AND p.modelo_producto LIKE %s"
             parametrosSql.append(f"%{busqueda}%")
 
+        if marca:
+            query += " AND m.nombre_marca = %s"
+            parametrosSql.append(marca)
+
         if perfil:
             # Subconsulta para evitar duplicados al filtrar relaciones N:M
             query += """
                 AND p.id_producto IN (
-                    SELECT pp.id_producto 
-                    FROM productos_perfiles pp 
-                    JOIN perfiles_uso pu ON pp.id_perfil = pu.id_perfil 
+                    SELECT pp.id_producto
+                    FROM productos_perfiles pp
+                    JOIN perfiles_uso pu ON pp.id_perfil = pu.id_perfil
                     WHERE pu.nombre_perfil = %s
                 )
             """
             parametrosSql.append(perfil)
 
+        # ordenarResultados - si es popular, ordena por cantidad de favoritos descendente
+        if esPopulares:
+            query += " ORDER BY total_favoritos DESC, p.modelo_producto ASC"
+        else:
+            query += " ORDER BY p.modelo_producto ASC"
+
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, tuple(parametrosSql))
-            resultados = cursor.fetchall()
-            cursor.close()
-            return resultados
+            return cursor.fetchall()
         except Exception as e:
             print(f"// errorObtenerCatalogo: {e}")
             return []
+        finally:
+            cursor.close()
+
+    # obtenerMarcasConProductos - Devuelve las marcas que tienen al menos un producto en el catálogo.
+    def obtenerMarcasConProductos(self):
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT DISTINCT m.nombre_marca as marca
+                FROM marcas m
+                JOIN productos p ON m.id_marca = p.id_marca
+                ORDER BY m.nombre_marca ASC
+            """)
+            return [row['marca'] for row in cursor.fetchall()]
+        except Exception as e:
+            print(f"// errorObtenerMarcas: {e}")
+            return []
+        finally:
+            cursor.close()
 
     # obtenerLaptopPorId - Recupera todos los datos fisicos y de rendimiento de una laptop especifica.
     def obtenerLaptopPorId(self, idProducto):
@@ -65,15 +113,15 @@ class ProductoDAO:
             JOIN laptops l ON p.id_producto = l.id_producto
             WHERE p.id_producto = %s
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
-            resultado = cursor.fetchone()
-            cursor.close()
-            return resultado
+            return cursor.fetchone()
         except Exception as e:
             print(f"// errorObtenerLaptop: {e}")
             return None
+        finally:
+            cursor.close()
 
     # upsertLaptop - Inserta una laptop o actualiza su precio si el modelo ya existe en la BD.
     def upsertLaptop(self, modelo, imgUrl, nombreMarca, pesoKg, tamanioPantalla, tasaRefrescoHz,
@@ -407,75 +455,76 @@ class ProductoDAO:
             JOIN cpu c ON p.id_producto = c.id_producto
             WHERE p.id_producto = %s
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
-            resultado = cursor.fetchone()
-            cursor.close()
-            return resultado
+            return cursor.fetchone()
         except Exception as e:
             print(f"// errorObtenerCPU: {e}")
             return None
+        finally:
+            cursor.close()
 
     # obtenerGPUPorId - Recupera las especificaciones de una placa de video.
     def obtenerGPUPorId(self, idProducto):
         query = """
-            SELECT 
+            SELECT
                 p.modelo_producto as modelo,
-                g.vram as vram_gb, g.tipo_memoria, 128 as bus_bits, g.consumo_wh as tdp_w
+                g.vram as vram_gb, g.tipo_memoria, g.consumo_wh as tdp_w
             FROM productos p
             JOIN gpu g ON p.id_producto = g.id_producto
             WHERE p.id_producto = %s
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
-            resultado = cursor.fetchone()
-            cursor.close()
-            return resultado
+            return cursor.fetchone()
         except Exception as e:
             print(f"// errorObtenerGPU: {e}")
             return None
+        finally:
+            cursor.close()
 
     # obtenerRAMPorId - Recupera las especificaciones de un módulo de memoria RAM.
     def obtenerRAMPorId(self, idProducto):
         query = """
-            SELECT 
+            SELECT
                 p.modelo_producto as modelo,
-                r.capacidad_gb_ram as capacidad_gb, r.tipo_ram as tipo_memoria, r.velocidad_mhz, 1 as cantidad_modulos, r.latencia_cl as latencia
+                r.capacidad_gb_ram as capacidad_gb, r.tipo_ram as tipo_memoria, r.velocidad_mhz, r.latencia_cl as latencia
             FROM productos p
             JOIN ram r ON p.id_producto = r.id_producto
             WHERE p.id_producto = %s
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
-            resultado = cursor.fetchone()
-            cursor.close()
-            return resultado
+            return cursor.fetchone()
         except Exception as e:
             print(f"// errorObtenerRAM: {e}")
             return None
+        finally:
+            cursor.close()
 
     # obtenerAlmacenamientoPorId - Recupera las especificaciones de un disco SSD/HDD.
     def obtenerAlmacenamientoPorId(self, idProducto):
         query = """
-            SELECT 
+            SELECT
                 p.modelo_producto as modelo,
-                a.capacidad_gb_almacenamiento as capacidad_gb, a.tipo_almacenamiento as tipo_disco, 'SATA III' as interfaz, a.vel_lectura as velocidad_lectura, '2.5"' as formato
+                a.capacidad_gb_almacenamiento as capacidad_gb, a.tipo_almacenamiento as tipo_disco,
+                a.vel_lectura as velocidad_lectura
             FROM productos p
             JOIN almacenamiento a ON p.id_producto = a.id_producto
             WHERE p.id_producto = %s
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
-            resultado = cursor.fetchone()
-            cursor.close()
-            return resultado
+            return cursor.fetchone()
         except Exception as e:
             print(f"// errorObtenerAlmacenamiento: {e}")
             return None
+        finally:
+            cursor.close()
 
     # obtenerCategoriaPorId - Obtiene el nombre de la categoría del producto.
     def obtenerCategoriaPorId(self, idProducto):
@@ -485,15 +534,16 @@ class ProductoDAO:
             JOIN categorias c ON p.id_categoria = c.id_categoria
             WHERE p.id_producto = %s
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
             resultado = cursor.fetchone()
-            cursor.close()
             return resultado['nombre_categoria'] if resultado else None
         except Exception as e:
             print(f"// errorObtenerCategoriaPorId: {e}")
             return None
+        finally:
+            cursor.close()
 
     # obtenerPreciosProducto - Obtiene la lista de precios y enlaces del producto en tiendas.
     def obtenerPreciosProducto(self, idProducto):
@@ -508,34 +558,35 @@ class ProductoDAO:
             WHERE s.id_producto = %s
             ORDER BY s.precio ASC
         """
+        cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor = self.conexion.cursor(dictionary=True)
             cursor.execute(query, (idProducto,))
-            resultado = cursor.fetchall()
-            cursor.close()
-            return resultado
+            return cursor.fetchall()
         except Exception as e:
             print(f"// errorObtenerPreciosProducto: {e}")
             return []
+        finally:
+            cursor.close()
 
     # obtenerDetalleProducto - Obtiene el detalle completo de un producto según su categoría.
     # Retorna un dict con los datos generales y las especificaciones técnicas.
     def obtenerDetalleProducto(self, idProducto):
         try:
             cursor = self.conexion.cursor(dictionary=True)
-            # Datos generales del producto
-            cursor.execute("""
-                SELECT 
-                    p.id_producto, p.modelo_producto as modelo, p.img_url,
-                    c.nombre_categoria as categoria,
-                    m.nombre_marca as marca
-                FROM productos p
-                JOIN categorias c ON p.id_categoria = c.id_categoria
-                JOIN marcas m ON p.id_marca = m.id_marca
-                WHERE p.id_producto = %s
-            """, (idProducto,))
-            producto = cursor.fetchone()
-            cursor.close()
+            try:
+                cursor.execute("""
+                    SELECT
+                        p.id_producto, p.modelo_producto as modelo, p.img_url,
+                        c.nombre_categoria as categoria,
+                        m.nombre_marca as marca
+                    FROM productos p
+                    JOIN categorias c ON p.id_categoria = c.id_categoria
+                    JOIN marcas m ON p.id_marca = m.id_marca
+                    WHERE p.id_producto = %s
+                """, (idProducto,))
+                producto = cursor.fetchone()
+            finally:
+                cursor.close()
 
             if not producto:
                 return None
@@ -565,3 +616,17 @@ class ProductoDAO:
         except Exception as e:
             print(f"// errorObtenerDetalleProducto: {e}")
             return None
+
+    # obtenerIdCategoriaNumerica - Devuelve el id_categoria (entero) de un producto.
+    # Usado por el controlador para guardar comparaciones sin abrir cursores en la capa web.
+    def obtenerIdCategoriaNumerica(self, idProducto):
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute("SELECT id_categoria FROM productos WHERE id_producto = %s", (idProducto,))
+            resultado = cursor.fetchone()
+            return resultado['id_categoria'] if resultado else 1
+        except Exception as e:
+            print(f"// errorObtenerIdCategoriaNumerica: {e}")
+            return 1
+        finally:
+            cursor.close()

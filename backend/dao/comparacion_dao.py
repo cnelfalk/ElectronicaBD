@@ -2,15 +2,9 @@ import mysql.connector
 from database.conexion import ConexionDB
 
 class ComparacionDAO:
-    def __init__(self, conexion=None):
-        """
-        Constructor del DAO. Si se le pasa una conexión activa, la usa.
-        Si no se le pasa ninguna (como en producción), inicializa y usa el Singleton global.
-        """
-        if conexion:
-            self.conexion = conexion
-        else:
-            self.conexion = ConexionDB.obtenerInstancia()
+    @property
+    def conexion(self):
+        return ConexionDB.obtenerInstancia()
 
     def guardarComparacion(self, id_usuario, id_producto_a, id_producto_b, id_categoria=1):
         """

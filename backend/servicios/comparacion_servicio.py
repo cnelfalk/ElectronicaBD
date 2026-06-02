@@ -45,6 +45,7 @@ class ComparacionServicio:
 
         recomendacion = {
             "success": True,
+            "categoria": "Laptop",
             "datosA": laptopA,
             "datosB": laptopB,
             "preciosA": preciosA,
@@ -168,6 +169,7 @@ class ComparacionServicio:
 
         recomendacion = {
             "success": True,
+            "categoria": "CPU",
             "datosA": cpuA,
             "datosB": cpuB,
             "preciosA": preciosA,
@@ -246,6 +248,7 @@ class ComparacionServicio:
 
         recomendacion = {
             "success": True,
+            "categoria": "GPU",
             "datosA": gpuA,
             "datosB": gpuB,
             "preciosA": preciosA,
@@ -320,6 +323,7 @@ class ComparacionServicio:
 
         recomendacion = {
             "success": True,
+            "categoria": "RAM",
             "datosA": ramA,
             "datosB": ramB,
             "preciosA": preciosA,
@@ -398,6 +402,7 @@ class ComparacionServicio:
 
         recomendacion = {
             "success": True,
+            "categoria": "Almacenamiento",
             "datosA": almA,
             "datosB": almB,
             "preciosA": preciosA,

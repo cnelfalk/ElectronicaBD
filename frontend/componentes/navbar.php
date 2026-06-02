@@ -6,8 +6,8 @@
         </a>
 
         <div class="tm-nav-links">
-            <a href="catalogo.php" class="tm-nav-link">Catálogo</a>
-            <a href="comparar.php" class="tm-nav-link">Comparar</a>
+            <a href="catalogo.php#catalogo" class="tm-nav-link">Catálogo</a>
+            <a href="#" class="tm-nav-link" onclick="return irACompararDesdeNav(event)">Comparar</a>
         </div>
 
         <div class="tm-nav-actions">
@@ -46,4 +46,20 @@
         } catch(e) {}
         window.location.href = 'catalogo.php';
     }
+
+    // irACompararDesdeNav - Valida que haya 2 productos seleccionados antes de redirigir a comparar.php
+    function irACompararDesdeNav(event) {
+        event.preventDefault();
+        const items = JSON.parse(sessionStorage.getItem('techmatch_comparar') || '[]');
+        
+        if (items.length === 2) {
+            window.location.href = `comparar.php?idA=${items[0].id}&idB=${items[1].id}`;
+        } else if (items.length === 1) {
+            alert('Seleccioná un producto más desde el catálogo para poder comparar.');
+        } else {
+            alert('Primero seleccioná 2 productos desde el catálogo para compararlos.');
+        }
+        return false;
+    }
 </script>
+

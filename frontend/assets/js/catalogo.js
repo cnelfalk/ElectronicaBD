@@ -1,14 +1,32 @@
 document.addEventListener('DOMContentLoaded', () => {
     // Referencias a los elementos del DOM
     const contenedorProductos = document.getElementById('contenedorProductos');
-    const btnAplicarFiltros = document.getElementById('btnAplicarFiltros');
-    const filtroCategoria = document.getElementById('filtroCategoria');
-    const filtroPerfil = document.getElementById('filtroPerfil');
-    const buscarNombre = document.getElementById('buscarNombre');
+    const btnAplicarFiltros   = document.getElementById('btnAplicarFiltros');
+    const filtroMarca         = document.getElementById('filtroMarca');
+    const filtroCategoria     = document.getElementById('filtroCategoria');
+    const filtroPerfil        = document.getElementById('filtroPerfil');
+    const buscarNombre        = document.getElementById('buscarNombre');
+
+    // Carga las marcas desde la API y puebla el select dinámicamente
+    async function cargarMarcas() {
+        try {
+            const resp = await fetch(`${API_URL}/marcas`);
+            const data = await resp.json();
+            if (data.success && data.data.length > 0) {
+                data.data.forEach(marca => {
+                    const opt = document.createElement('option');
+                    opt.value = marca;
+                    opt.textContent = marca;
+                    filtroMarca.appendChild(opt);
+                });
+            }
+        } catch (e) {
+            console.error('Error cargando marcas:', e);
+        }
+    }
 
     // Función principal para cargar productos
     async function cargarProductos() {
-        // Mostrar estado de carga
         contenedorProductos.innerHTML = `
             <div class="tm-loading">
                 <div class="tm-spinner"></div>
@@ -18,9 +36,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Construir la URL con los parámetros de filtro
         const params = new URLSearchParams();
+        if (filtroMarca.value)     params.append('marca',     filtroMarca.value);
         if (filtroCategoria.value) params.append('categoria', filtroCategoria.value);
-        if (filtroPerfil.value) params.append('perfil', filtroPerfil.value);
-        if (buscarNombre.value) params.append('busqueda', buscarNombre.value);
+        if (filtroPerfil.value)    params.append('perfil',    filtroPerfil.value);
+        if (buscarNombre.value)    params.append('busqueda',  buscarNombre.value);
 
         const urlConFiltros = `${API_URL}/productos?${params.toString()}`;
 
@@ -88,8 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div class="tm-card-img">
                             ${imgSrc
                                 ? `<img src="${imgSrc}" alt="${producto.modelo}" 
-                                        onerror="this.style.display='none'; this.parentElement.innerHTML = generarPlaceholder('${producto.marca}');">`
-                                : generarPlaceholder(producto.marca)
+                                        onerror="this.style.display='none'; this.parentElement.innerHTML = generarPlaceholder('${producto.marca}', '${producto.categoria}');">`
+                                : generarPlaceholder(producto.marca, producto.categoria)
                             }
                         </div>
                     </a>
@@ -139,6 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Event Listeners ---
+    cargarMarcas();
     cargarProductos();
     btnAplicarFiltros.addEventListener('click', cargarProductos);
     buscarNombre.addEventListener('keypress', (e) => {
@@ -146,11 +166,62 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// Generar placeholder visual cuando no hay imagen
-function generarPlaceholder(marca) {
-    const inicial = marca ? marca[0].toUpperCase() : '?';
+// generarPlaceholder - Genera un placeholder visual con ícono SVG según la categoría del producto
+function generarPlaceholder(marca, categoria) {
+    const iconosSVG = {
+        'CPU': `<svg viewBox="0 0 64 64" width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="16" y="16" width="32" height="32" rx="4" stroke="#6c5ce7" stroke-width="2" fill="#6c5ce720"/>
+            <rect x="24" y="24" width="16" height="16" rx="2" fill="#6c5ce7" opacity="0.6"/>
+            <line x1="20" y1="12" x2="20" y2="16" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="12" x2="28" y2="16" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="36" y1="12" x2="36" y2="16" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="44" y1="12" x2="44" y2="16" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="20" y1="48" x2="20" y2="52" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="28" y1="48" x2="28" y2="52" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="36" y1="48" x2="36" y2="52" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="44" y1="48" x2="44" y2="52" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="20" x2="16" y2="20" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="28" x2="16" y2="28" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="36" x2="16" y2="36" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="12" y1="44" x2="16" y2="44" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="48" y1="20" x2="52" y2="20" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="48" y1="28" x2="52" y2="28" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="48" y1="36" x2="52" y2="36" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+            <line x1="48" y1="44" x2="52" y2="44" stroke="#6c5ce7" stroke-width="2" stroke-linecap="round"/>
+        </svg>`,
+        'GPU': `<svg viewBox="0 0 64 64" width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="6" y="18" width="52" height="28" rx="4" stroke="#00b894" stroke-width="2" fill="#00b89420"/>
+            <circle cx="20" cy="32" r="8" stroke="#00b894" stroke-width="2" fill="#00b89430"/>
+            <circle cx="44" cy="32" r="6" stroke="#00b894" stroke-width="2" fill="#00b89430"/>
+            <line x1="14" y1="46" x2="14" y2="52" stroke="#00b894" stroke-width="2" stroke-linecap="round"/>
+            <line x1="22" y1="46" x2="22" y2="52" stroke="#00b894" stroke-width="2" stroke-linecap="round"/>
+            <line x1="30" y1="46" x2="30" y2="52" stroke="#00b894" stroke-width="2" stroke-linecap="round"/>
+            <rect x="6" y="14" width="4" height="8" rx="1" fill="#00b894" opacity="0.5"/>
+        </svg>`,
+        'RAM': `<svg viewBox="0 0 64 64" width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="4" y="20" width="56" height="24" rx="3" stroke="#fdcb6e" stroke-width="2" fill="#fdcb6e20"/>
+            <rect x="10" y="25" width="6" height="14" rx="1" fill="#fdcb6e" opacity="0.5"/>
+            <rect x="19" y="25" width="6" height="14" rx="1" fill="#fdcb6e" opacity="0.5"/>
+            <rect x="28" y="25" width="6" height="14" rx="1" fill="#fdcb6e" opacity="0.5"/>
+            <rect x="37" y="25" width="6" height="14" rx="1" fill="#fdcb6e" opacity="0.5"/>
+            <rect x="46" y="25" width="6" height="14" rx="1" fill="#fdcb6e" opacity="0.5"/>
+            <rect x="24" y="44" width="16" height="4" rx="1" fill="#fdcb6e" opacity="0.3"/>
+        </svg>`,
+        'Laptop': `<svg viewBox="0 0 64 64" width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="12" width="44" height="30" rx="3" stroke="#74b9ff" stroke-width="2" fill="#74b9ff20"/>
+            <rect x="14" y="16" width="36" height="22" rx="1" fill="#74b9ff" opacity="0.15"/>
+            <path d="M4 46 Q4 42 10 42 L54 42 Q60 42 60 46 L60 48 Q60 50 58 50 L6 50 Q4 50 4 48 Z" stroke="#74b9ff" stroke-width="2" fill="#74b9ff20"/>
+        </svg>`,
+        'Almacenamiento': `<svg viewBox="0 0 64 64" width="64" height="64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="12" y="12" width="40" height="40" rx="4" stroke="#a29bfe" stroke-width="2" fill="#a29bfe20"/>
+            <circle cx="32" cy="28" r="10" stroke="#a29bfe" stroke-width="2" fill="#a29bfe15"/>
+            <circle cx="32" cy="28" r="3" fill="#a29bfe" opacity="0.6"/>
+            <rect x="18" y="42" width="28" height="4" rx="2" fill="#a29bfe" opacity="0.4"/>
+        </svg>`
+    };
+    const icono = iconosSVG[categoria] || iconosSVG['Laptop'];
     return `<div class="tm-card-placeholder">
-                <span class="tm-card-placeholder-letter">${inicial}</span>
+                ${icono}
                 <span class="tm-card-placeholder-brand">${marca || 'Sin marca'}</span>
             </div>`;
 }

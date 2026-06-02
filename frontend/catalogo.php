@@ -32,7 +32,7 @@
                 <a href="#catalogo" class="tm-btn tm-btn-primary tm-btn-lg">
                     🔍 Explorar Catálogo
                 </a>
-                <a href="comparar.php" class="tm-btn tm-btn-ghost tm-btn-lg">
+                <a href="comparar.php" class="tm-btn tm-btn-ghost tm-btn-lg" onclick="return irACompararDesdeNav(event)">
                     ⚖️ Comparar Productos
                 </a>
             </div>
@@ -84,6 +84,13 @@
                 </div>
 
                 <div class="tm-filter-group">
+                    <label for="filtroMarca">Marca</label>
+                    <select class="tm-select" id="filtroMarca">
+                        <option value="">Todas las marcas</option>
+                    </select>
+                </div>
+
+                <div class="tm-filter-group">
                     <label for="filtroCategoria">Categoría</label>
                     <select class="tm-select" id="filtroCategoria">
                         <option value="">Todas</option>
@@ -91,6 +98,7 @@
                         <option value="GPU">Placas de Video</option>
                         <option value="RAM">Memoria RAM</option>
                         <option value="Laptop">Laptops</option>
+                        <option value="Almacenamiento">Almacenamiento</option>
                     </select>
                 </div>
 
