@@ -7,23 +7,21 @@
         </a>
 
         <div class="tm-nav-links">
-            <a href="catalogo.php#catalogo" class="tm-nav-link">Catálogo</a>
+            <a href="catalogo.php#zona-catalogo" class="tm-nav-link">Catálogo</a>
             <a href="#" class="tm-nav-link" onclick="return irACompararDesdeNav(event)">Comparar</a>
         </div>
 
         <div class="tm-nav-actions">
-            <!-- Estado: no logueado -->
             <div id="nav-sin-sesion">
                 <a href="login.php" class="tm-btn tm-btn-ghost tm-btn-sm">Iniciar Sesión</a>
                 <a href="registro.php" class="tm-btn tm-btn-primary tm-btn-sm">Registrarse</a>
             </div>
 
-            <!-- Estado: logueado (oculto hasta que JS lo muestre) -->
             <div id="nav-con-sesion" style="display:none;" class="tm-nav-actions">
                 <a href="favoritos.php" class="tm-nav-link" style="font-size: 0.85rem;">❤️ Mis Favoritos</a>
                 <a href="comparaciones_guardadas.php" class="tm-nav-link" style="font-size: 0.85rem;">⚖️ Mis Comparaciones</a>
                 <span style="color: var(--tm-text-secondary); font-size: 0.85rem;" id="nav-nombre-usuario"></span>
-                <button class="tm-btn tm-btn-ghost tm-btn-sm" onclick="cerrarSesion()">Salir</button>
+                <button class="tm-btn tm-btn-ghost tm-btn-sm" onclick="cerrarSesion()">Cerrar Sesión</button>
             </div>
         </div>
     </div>
@@ -40,12 +38,18 @@
         }
     })();
 
-    async function cerrarSesion() {
-        localStorage.removeItem('techmatch_usuario');
-        try {
-            await fetch('utils/clear_session.php');
-        } catch(e) {}
-        window.location.href = 'catalogo.php';
+async function cerrarSesion() {
+        // Llamamos a tu modal personalizado y esperamos la respuesta
+        const confirmado = await mostrarConfirmacion("¿Estás seguro de que querés cerrar sesión?");
+        
+        if (confirmado) {
+            localStorage.removeItem('techmatch_usuario');
+            try {
+                await fetch('utils/clear_session.php');
+            } catch(e) {}
+            // Lo redirigimos al catálogo al salir
+            window.location.href = 'catalogo.php';
+        }
     }
 
     // irACompararDesdeNav - Valida que haya 2 productos seleccionados antes de redirigir a comparar.php
@@ -63,4 +67,3 @@
         return false;
     }
 </script>
-

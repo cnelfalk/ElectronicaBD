@@ -157,9 +157,44 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     }
 
-    // --- Event Listeners ---
-    cargarMarcas();
-    cargarProductos();
+// --- Event Listeners y Lectura de URL ---
+    
+    // Creamos una función asíncrona para controlar el orden de ejecución exacto
+    async function inicializarCatalogo() {
+        // 1. PRIMERO: Esperamos a que la API traiga todas las marcas y llene el <select>
+        await cargarMarcas();
+
+        // 2. SEGUNDO: Leemos la URL
+        const parametrosURL = new URLSearchParams(window.location.search);
+        
+        // Aplicamos filtro de categoría si existe
+        if (parametrosURL.has('categoria')) {
+            const cat = parametrosURL.get('categoria');
+            const catCapitalizada = cat.charAt(0).toUpperCase() + cat.slice(1);
+            if (filtroCategoria.querySelector(`option[value="${catCapitalizada}"]`)) {
+                filtroCategoria.value = catCapitalizada;
+            } else if (filtroCategoria.querySelector(`option[value="${cat.toUpperCase()}"]`)) {
+                filtroCategoria.value = cat.toUpperCase();
+            }
+        }
+
+        // Aplicamos filtro de marca si existe (ahora sí las opciones ya existen en el HTML)
+        if (parametrosURL.has('marca')) {
+            const marcaUrl = parametrosURL.get('marca');
+            const option = Array.from(filtroMarca.options).find(opt => opt.value.toLowerCase() === marcaUrl.toLowerCase());
+            if (option) {
+                filtroMarca.value = option.value;
+            }
+        }
+
+        // 3. TERCERO: Con los selects ya configurados correctamente, pedimos los productos
+        cargarProductos();
+    }
+
+    // Arrancamos el proceso
+    inicializarCatalogo();
+
+    // Asignamos los eventos a los botones
     btnAplicarFiltros.addEventListener('click', cargarProductos);
     buscarNombre.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') cargarProductos();

@@ -259,18 +259,28 @@
         
         const msgLower = message.toLowerCase();
         
-        // Detección contextual para definir íconos y estilos
-        if (msgLower.includes('eliminar') || msgLower.includes('quitar') || msgLower.includes('borrar') || msgLower.includes('seguro')) {
+// Detección contextual para definir íconos y estilos
+        if (msgLower.includes('eliminar') || msgLower.includes('quitar') || msgLower.includes('borrar')) {
+            // Acción destructiva pura (Favoritos, Comparaciones)
             icon = '🗑️';
             title = 'Confirmar Acción';
             confirmText = 'Eliminar';
             confirmBtnClass = 'tm-modal-btn-danger';
             iconClass = 'danger';
+        } else if (msgLower.includes('seguro') || msgLower.includes('salir') || msgLower.includes('cerrar sesión')) {
+            // Confirmación general / Cerrar Sesión
+            icon = '​❗​';
+            title = 'Confirmar Acción';
+            confirmText = 'Sí, continuar'; 
+            confirmBtnClass = 'tm-modal-btn-danger'; // Lo mantenemos rojo para que destaque, o podés cambiarlo a tm-modal-btn-confirm
+            iconClass = 'danger';
         } else if (msgLower.includes('no podés') || msgLower.includes('solo podés') || msgLower.includes('error') || msgLower.includes('falló') || msgLower.includes('incorrecto')) {
+            // Alertas y errores
             icon = '⚠️';
             title = 'Atención';
             iconClass = 'warning';
         } else if (msgLower.includes('éxito') || msgLower.includes('guardado') || msgLower.includes('exitosamente') || msgLower.includes('agregado')) {
+            // Éxito
             icon = '✨';
             title = '¡Excelente!';
             iconClass = 'success';

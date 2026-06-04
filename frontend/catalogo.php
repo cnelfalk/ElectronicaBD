@@ -11,9 +11,6 @@
 
     <?php include 'componentes/navbar.php'; ?>
 
-    <!-- ══════════════════════════════════════
-         HERO — Explicación de TechMatch
-         ══════════════════════════════════════ -->
     <section class="tm-hero">
         <div class="tm-hero-content">
             <div class="tm-hero-badge">
@@ -29,7 +26,7 @@
                 Sin datos inventados, sin marketing — solo specs reales y precios actualizados.
             </p>
             <div class="tm-hero-actions">
-                <a href="#catalogo" class="tm-btn tm-btn-primary tm-btn-lg">
+                <a href="#zona-catalogo" class="tm-btn tm-btn-primary tm-btn-lg">
                     🔍 Explorar Catálogo
                 </a>
                 <a href="comparar.php" class="tm-btn tm-btn-ghost tm-btn-lg" onclick="return irACompararDesdeNav(event)">
@@ -65,16 +62,12 @@
 
     <hr class="tm-section-divider">
 
-    <!-- ══════════════════════════════════════
-         CATÁLOGO DE PRODUCTOS
-         ══════════════════════════════════════ -->
-    <section class="tm-catalog" id="catalogo">
+    <section class="tm-catalog" id="zona-catalogo">
         <div class="tm-catalog-header">
             <h2>Catálogo de Productos</h2>
         </div>
 
         <div class="tm-catalog-layout">
-            <!-- Panel de Filtros -->
             <aside class="tm-filters">
                 <div class="tm-filters-title">Filtros</div>
 
@@ -118,7 +111,6 @@
                 </button>
             </aside>
 
-            <!-- Grilla de Productos -->
             <div class="tm-product-grid" id="contenedorProductos">
                 <div class="tm-loading">
                     <div class="tm-spinner"></div>
