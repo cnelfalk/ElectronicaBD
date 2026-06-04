@@ -18,7 +18,8 @@ class FavoritoServicio:
             return {"success": False, "mensaje": "ID de usuario no proporcionado"}
             
         favoritos = self.favoritoDao.obtenerFavoritosPorUsuario(idUsuario)
-        return {"success": True, "data": favoritos, "total": len(favoritos)}
+        favoritos_dict = [f.to_dict() if hasattr(f, 'to_dict') else f for f in favoritos]
+        return {"success": True, "data": favoritos_dict, "total": len(favoritos)}
 
     def eliminar(self, idUsuario, idProducto):
         exito = self.favoritoDao.eliminarFavorito(idUsuario, idProducto)

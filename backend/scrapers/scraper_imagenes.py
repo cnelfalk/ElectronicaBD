@@ -156,9 +156,8 @@ class ScraperImagenes(ScraperBase):
         # limpiarQueryBusqueda - simplificar el modelo para búsqueda efectiva
         queryBusqueda = self._limpiarQueryBusqueda(modelo, marca)
 
-        # Construir URL de búsqueda en ML
-        rutaCategoria = self.RUTAS_ML.get(categoria, 'computacion')
-        urlBusqueda = f"https://listado.mercadolibre.com.ar/{rutaCategoria}/{queryBusqueda.replace(' ', '-')}"
+        # Construir URL de búsqueda en ML (con filtro de productos nuevos)
+        urlBusqueda = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
 
         try:
             driver.get(urlBusqueda)
@@ -170,8 +169,8 @@ class ScraperImagenes(ScraperBase):
             items = sopa.find_all('li', class_='ui-search-layout__item')
 
             if not items:
-                # Fallback: buscar sin restricción de categoría
-                urlGeneral = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}"
+                # Fallback: buscar sin restricción de categoría (con filtro de productos nuevos)
+                urlGeneral = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
                 driver.get(urlGeneral)
                 time.sleep(4)
                 sopa = BeautifulSoup(driver.page_source, 'html.parser')
@@ -182,6 +181,9 @@ class ScraperImagenes(ScraperBase):
 
             # Extraer imagen del primer resultado relevante
             for item in items[:5]:
+                # Safety check: skip used items
+                if "usado" in item.text.lower():
+                    continue
                 imgUrl = self._extraerImagenDeItem(item)
                 if imgUrl:
                     return imgUrl

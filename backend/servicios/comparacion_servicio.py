@@ -154,6 +154,8 @@ class ComparacionServicio:
             recomendacion['ganador'] = "Empate Técnico"
             recomendacion['motivo'] = "Ambos equipos ofrecen capacidades idénticas para el uso solicitado. Te sugerimos guiarte por el diseño físico o el precio."
 
+        recomendacion['datosA'] = recomendacion['datosA'].to_dict() if hasattr(recomendacion['datosA'], 'to_dict') else recomendacion['datosA']
+        recomendacion['datosB'] = recomendacion['datosB'].to_dict() if hasattr(recomendacion['datosB'], 'to_dict') else recomendacion['datosB']
         return recomendacion
 
     # generarRecomendacionCPUs - Metodo principal que orquesta la comparacion de procesadores.
@@ -231,6 +233,8 @@ class ComparacionServicio:
             recomendacion['ganador'] = "Empate Técnico"
             recomendacion['motivo'] = "Ambos procesadores cuentan con características equivalentes de rendimiento para este perfil de uso."
 
+        recomendacion['datosA'] = recomendacion['datosA'].to_dict() if hasattr(recomendacion['datosA'], 'to_dict') else recomendacion['datosA']
+        recomendacion['datosB'] = recomendacion['datosB'].to_dict() if hasattr(recomendacion['datosB'], 'to_dict') else recomendacion['datosB']
         return recomendacion
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -306,6 +310,8 @@ class ComparacionServicio:
             recomendacion['ganador'] = "Empate Técnico"
             recomendacion['motivo'] = "Ambas placas de video ofrecen prestaciones equivalentes para este perfil de uso."
 
+        recomendacion['datosA'] = recomendacion['datosA'].to_dict() if hasattr(recomendacion['datosA'], 'to_dict') else recomendacion['datosA']
+        recomendacion['datosB'] = recomendacion['datosB'].to_dict() if hasattr(recomendacion['datosB'], 'to_dict') else recomendacion['datosB']
         return recomendacion
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -385,6 +391,8 @@ class ComparacionServicio:
             recomendacion['ganador'] = "Empate Técnico"
             recomendacion['motivo'] = "Ambas memorias RAM ofrecen prestaciones equivalentes para este perfil de uso."
 
+        recomendacion['datosA'] = recomendacion['datosA'].to_dict() if hasattr(recomendacion['datosA'], 'to_dict') else recomendacion['datosA']
+        recomendacion['datosB'] = recomendacion['datosB'].to_dict() if hasattr(recomendacion['datosB'], 'to_dict') else recomendacion['datosB']
         return recomendacion
 
     # ═══════════════════════════════════════════════════════════════════════════
@@ -469,20 +477,28 @@ class ComparacionServicio:
             recomendacion['ganador'] = "Empate Técnico"
             recomendacion['motivo'] = "Ambos dispositivos de almacenamiento ofrecen prestaciones equivalentes para este perfil de uso."
 
+        recomendacion['datosA'] = recomendacion['datosA'].to_dict() if hasattr(recomendacion['datosA'], 'to_dict') else recomendacion['datosA']
+        recomendacion['datosB'] = recomendacion['datosB'].to_dict() if hasattr(recomendacion['datosB'], 'to_dict') else recomendacion['datosB']
         return recomendacion
 
-    # guardarComparacion - Persiste una comparación entre dos productos en la BD
+    # guardarComparacion - Persiste una comparación entre dos productos, rechazando duplicados.
     def guardarComparacion(self, idUsuario, idProductoA, idProductoB, idCategoria=1):
         try:
-            return self.comparacionDao.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
+            if self.comparacionDao.existeComparacion(idUsuario, idProductoA, idProductoB):
+                return {"success": False, "duplicado": True, "mensaje": "Ya tenés esta comparación guardada."}
+            ok = self.comparacionDao.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
+            if ok:
+                return {"success": True, "mensaje": "Comparación guardada exitosamente."}
+            return {"success": False, "duplicado": False, "mensaje": "Error al guardar la comparación en la base de datos."}
         except Exception as e:
             print(f"// errorGuardarComparacionServicio: {e}")
-            return False
+            return {"success": False, "duplicado": False, "mensaje": str(e)}
 
     # obtenerComparacionesUsuario - Recupera el historial de comparaciones del usuario
     def obtenerComparacionesUsuario(self, idUsuario):
         try:
-            return self.comparacionDao.obtenerComparacionesUsuario(idUsuario)
+            historial = self.comparacionDao.obtenerComparacionesUsuario(idUsuario)
+            return [c.to_dict() if hasattr(c, 'to_dict') else c for c in historial]
         except Exception as e:
             print(f"// errorObtenerHistorialServicio: {e}")
             return []

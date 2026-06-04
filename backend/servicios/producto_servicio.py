@@ -11,7 +11,8 @@ class ProductoServicio:
         productos = self.productoDao.obtenerCatalogoFiltrado(categoria, perfil, busqueda, marca, ordenar)
 
         if productos:
-            return {"success": True, "data": productos, "total": len(productos)}
+            productos_dict = [p.to_dict() if hasattr(p, 'to_dict') else p for p in productos]
+            return {"success": True, "data": productos_dict, "total": len(productos)}
         else:
             return {"success": True, "data": [], "mensaje": "No se encontraron productos"}
 
@@ -22,4 +23,13 @@ class ProductoServicio:
 
     # obtenerDetalle - devuelve el detalle completo de un producto (specs + precios)
     def obtenerDetalle(self, idProducto):
-        return self.productoDao.obtenerDetalleProducto(idProducto)
+        detalle = self.productoDao.obtenerDetalleProducto(idProducto)
+        if not detalle:
+            return None
+        prod_obj = detalle.get('producto')
+        specs_obj = detalle.get('specs')
+        return {
+            'producto': prod_obj.to_dict() if hasattr(prod_obj, 'to_dict') else prod_obj,
+            'specs': specs_obj.to_dict() if hasattr(specs_obj, 'to_dict') else specs_obj,
+            'precios': detalle.get('precios')
+        }

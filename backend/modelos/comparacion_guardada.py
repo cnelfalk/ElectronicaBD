@@ -23,5 +23,13 @@ class ComparacionGuardada:
             "fecCreacionComp": self.fecCreacionComp.isoformat() if hasattr(self.fecCreacionComp, 'isoformat') else self.fecCreacionComp,
             "idCategoria": self.idCategoria,
             "idUsuario": self.idUsuario,
-            "productos": serializados_productos
+            "productos": serializados_productos,
+            
+            # Compatibilidad con frontend (snake_case)
+            "id_comparacion": self.idComparacion,
+            "fecha": self.fecCreacionComp.isoformat() if hasattr(self.fecCreacionComp, 'isoformat') else self.fecCreacionComp,
+            "categoria": self.idCategoria,
+            "id_usuario": self.idUsuario,
+            "ids_productos": getattr(self, 'ids_productos', None) if getattr(self, 'ids_productos', None) is not None else (self.productos.get('ids_productos') if isinstance(self.productos, dict) else None),
+            "duplas_modelos": getattr(self, 'duplas_modelos', None) if getattr(self, 'duplas_modelos', None) is not None else (self.productos.get('duplas_modelos') if isinstance(self.productos, dict) else None)
         }

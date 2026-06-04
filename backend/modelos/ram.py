@@ -19,6 +19,16 @@ class RAM(Producto):
             "capacidadGbRam": self.capacidadGbRam,
             "velocidadMhz": self.velocidadMhz,
             "latenciaCl": self.latenciaCl,
-            "tipoRam": self.tipoRam
+            "tipoRam": self.tipoRam,
+            
+            # Compatibilidad con frontend (snake_case)
+            "capacidad_gb": self.capacidadGbRam,
+            "capacidad_gb_ram": self.capacidadGbRam,
+            "velocidad_mhz": self.velocidadMhz,
+            "latencia": self.latenciaCl,
+            "latencia_cl": self.latenciaCl,
+            "tipo_ram": self.tipoRam,
+            "tipo_memoria": self.tipoRam,
+            "cantidad_modulos": getattr(self, "cantidad_modulos", 1)
         })
         return dict_base

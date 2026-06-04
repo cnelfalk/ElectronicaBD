@@ -1,5 +1,12 @@
 from database.conexion import ConexionDB
-from utils.normalizacion import coincide_modelo, extraer_specs_de_titulo, extraer_specs_gpu, extraer_specs_ram, extraer_specs_almacenamiento
+from utils.normalizacion import coincide_modelo, extraer_specs_de_titulo, extraer_specs_gpu, extraer_specs_ram, extraer_specs_almacenamiento, validar_url_retail
+from modelos.producto import Producto
+from modelos.laptop import Laptop
+from modelos.cpu import CPU
+from modelos.gpu import GPU
+from modelos.ram import RAM
+from modelos.almacenamiento import Almacenamiento
+
 
 # ProductoDAO - Capa exclusiva para comunicarse con MySQL. No contiene reglas de negocio.
 class ProductoDAO:
@@ -78,7 +85,23 @@ class ProductoDAO:
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, tuple(parametrosSql))
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+            productos = []
+            for row in rows:
+                p = Producto(
+                    idProducto=row['id_producto'],
+                    modeloProducto=row['modelo'],
+                    imgUrl=row['img_url'],
+                    urlOficial=None,
+                    idCategoria=None,
+                    idMarca=None
+                )
+                p.categoria = row['categoria']
+                p.marca = row['marca']
+                if 'total_favoritos' in row:
+                    p.total_favoritos = row['total_favoritos']
+                productos.append(p)
+            return productos
         except Exception as e:
             print(f"// errorObtenerCatalogo: {e}")
             return []
@@ -106,17 +129,41 @@ class ProductoDAO:
     def obtenerLaptopPorId(self, idProducto):
         query = """
             SELECT 
-                p.modelo_producto as modelo,
+                p.id_producto, p.modelo_producto, p.img_url, p.id_categoria, p.id_marca,
+                c.nombre_categoria as categoria, m.nombre_marca as marca,
                 l.peso_kg, l.tamanio_pantalla, l.tasa_refresco_hz, l.capacidad_bateria_wh,
                 l.cpu_modelo, l.gpu_modelo, l.ram_gb, l.almacenamiento_gb
             FROM productos p
             JOIN laptops l ON p.id_producto = l.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN marcas m ON p.id_marca = m.id_marca
             WHERE p.id_producto = %s
         """
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, (idProducto,))
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if not row:
+                return None
+            laptop = Laptop(
+                idProducto=row['id_producto'],
+                modeloProducto=row['modelo_producto'],
+                imgUrl=row['img_url'],
+                urlOficial=None,
+                idCategoria=row['id_categoria'],
+                idMarca=row['id_marca'],
+                cpuObj=row['cpu_modelo'],
+                gpuObj=row['gpu_modelo'],
+                ramObj=row['ram_gb'],
+                almacenamientoObj=row['almacenamiento_gb'],
+                pesoKg=row['peso_kg'],
+                tamanioPantalla=row['tamanio_pantalla'],
+                tasaRefrescoHz=row['tasa_refresco_hz'],
+                capacidadBateriaWh=row['capacidad_bateria_wh']
+            )
+            laptop.categoria = row['categoria']
+            laptop.marca = row['marca']
+            return laptop
         except Exception as e:
             print(f"// errorObtenerLaptop: {e}")
             return None
@@ -147,15 +194,18 @@ class ProductoDAO:
                         (imgUrl, idProducto)
                     )
                 if precio > 0:
-                    cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
-                    tiendaRow = cursor.fetchone()
-                    if tiendaRow:
-                        cursor.execute("""
-                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
-                            VALUES (%s, %s, %s, %s, NOW())
-                            ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
-                        """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
-                        self.conexion.commit()
+                    if validar_url_retail(urlProducto, nombreTienda):
+                        cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                        tiendaRow = cursor.fetchone()
+                        if tiendaRow:
+                            cursor.execute("""
+                                INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                                VALUES (%s, %s, %s, %s, NOW())
+                                ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
+                            """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
+                            self.conexion.commit()
+                    else:
+                        print(f"// upsertLaptop: Enlace invalido para {nombreTienda}: '{urlProducto}'. Salteando guardado de precio.")
                 return
 
             # Producto nuevo: inserción completa
@@ -183,13 +233,16 @@ class ProductoDAO:
                   cpuModelo, gpuModelo, ramGb, almacenamientoGb, idProductoGenerado))
 
             if precio > 0:
-                cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
-                tiendaRow = cursor.fetchone()
-                if tiendaRow:
-                    cursor.execute("""
-                        INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
-                        VALUES (%s, %s, %s, %s, NOW())
-                    """, (idProductoGenerado, tiendaRow['id_tienda'], precio, urlProducto))
+                if validar_url_retail(urlProducto, nombreTienda):
+                    cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                    tiendaRow = cursor.fetchone()
+                    if tiendaRow:
+                        cursor.execute("""
+                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                            VALUES (%s, %s, %s, %s, NOW())
+                        """, (idProductoGenerado, tiendaRow['id_tienda'], precio, urlProducto))
+                else:
+                    print(f"// upsertLaptop: Enlace invalido para {nombreTienda}: '{urlProducto}'. Salteando guardado de precio.")
 
             self.conexion.commit()
 
@@ -280,22 +333,10 @@ class ProductoDAO:
                 # (los scrapers de AMD/Intel crean CPUs con datos reales via upsertCPU;
                 #  esto cubre CPUs de retail que no tuvieron coincidencia)
                 elif nombreCategoria == 'CPU':
-                    socketKeyword = "AM" if nombreMarca == "AMD" else "LGA"
-                    cursor.execute(
-                        "SELECT id_socket FROM socket WHERE nombre_socket LIKE %s LIMIT 1",
-                        (f"%{socketKeyword}%",)
-                    )
-                    socketRow = cursor.fetchone()
-                    if not socketRow:
-                        cursor.execute("SELECT id_socket FROM socket LIMIT 1")
-                        socketRow = cursor.fetchone()
-                    if socketRow:
-                        cursor.execute("""
-                            INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp, id_socket)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        """, (idProducto, 6, 12, 3.0, 4.5, 65, socketRow['id_socket']))
-                    else:
-                        print(f"// upsertProductoRetail: no hay sockets en BD para CPU '{modelo}'. Insertado sin specs.")
+                    cursor.execute("""
+                        INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (idProducto, 6, 12, 3.0, 4.5, 65))
 
                 # Si es GPU, insertar en la tabla gpu con specs extraídas del título
                 elif nombreCategoria == 'GPU':
@@ -327,14 +368,17 @@ class ProductoDAO:
 
             # Insertar o actualizar el precio en la tienda
             if precio > 0:
-                cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
-                tiendaRow = cursor.fetchone()
-                if tiendaRow:
-                    cursor.execute("""
-                        INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
-                        VALUES (%s, %s, %s, %s, NOW())
-                        ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
-                    """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
+                if validar_url_retail(urlProducto, nombreTienda):
+                    cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
+                    tiendaRow = cursor.fetchone()
+                    if tiendaRow:
+                        cursor.execute("""
+                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                            VALUES (%s, %s, %s, %s, NOW())
+                            ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
+                        """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
+                else:
+                    print(f"// upsertProductoRetail: Enlace invalido para {nombreTienda}: '{urlProducto}'. Salteando guardado de precio.")
 
             self.conexion.commit()
 
@@ -378,23 +422,10 @@ class ProductoDAO:
             )
             idProducto = cursor.lastrowid
 
-            # Buscar socket por marca: AMD → AM*, Intel → LGA*
-            socketKeyword = "AM" if nombreMarca == "AMD" else "LGA"
-            cursor.execute("SELECT id_socket FROM socket WHERE nombre_socket LIKE %s LIMIT 1", (f"%{socketKeyword}%",))
-            socketRow = cursor.fetchone()
-            if not socketRow:
-                cursor.execute("SELECT id_socket FROM socket LIMIT 1")
-                socketRow = cursor.fetchone()
-            if not socketRow:
-                print(f"// upsertCPU: no hay sockets en la BD. Salteando {modelo}.")
-                self.conexion.rollback()
-                return
-            idSocket = socketRow['id_socket']
-
             cursor.execute("""
-                INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp, id_socket)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """, (idProducto, nucleos, hilos, frecBase, frecTurbo, tdp, idSocket))
+                INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (idProducto, nucleos, hilos, frecBase, frecTurbo, tdp))
 
             self.conexion.commit()
 
@@ -448,17 +479,38 @@ class ProductoDAO:
     # obtenerCPUPorId - Recupera todas las especificaciones de un procesador de la tabla cpu.
     def obtenerCPUPorId(self, idProducto):
         query = """
-            SELECT 
-                p.modelo_producto as modelo,
-                c.nucleos, c.hilos, c.frecuencia_base, c.frecuencia_turbo, c.tdp
+            SELECT
+                p.id_producto, p.modelo_producto, p.img_url, p.id_categoria, p.id_marca,
+                c.nombre_categoria as categoria, m.nombre_marca as marca,
+                cpu.nucleos, cpu.hilos, cpu.frecuencia_base, cpu.frecuencia_turbo, cpu.tdp
             FROM productos p
-            JOIN cpu c ON p.id_producto = c.id_producto
+            JOIN cpu ON p.id_producto = cpu.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN marcas m ON p.id_marca = m.id_marca
             WHERE p.id_producto = %s
         """
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, (idProducto,))
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if not row:
+                return None
+            cpu = CPU(
+                idProducto=row['id_producto'],
+                modeloProducto=row['modelo_producto'],
+                imgUrl=row['img_url'],
+                urlOficial=None,
+                idCategoria=row['id_categoria'],
+                idMarca=row['id_marca'],
+                nucleos=row['nucleos'],
+                hilos=row['hilos'],
+                frecuenciaBase=row['frecuencia_base'],
+                frecuenciaTurbo=row['frecuencia_turbo'],
+                tdp=row['tdp']
+            )
+            cpu.categoria = row['categoria']
+            cpu.marca = row['marca']
+            return cpu
         except Exception as e:
             print(f"// errorObtenerCPU: {e}")
             return None
@@ -469,16 +521,36 @@ class ProductoDAO:
     def obtenerGPUPorId(self, idProducto):
         query = """
             SELECT
-                p.modelo_producto as modelo,
-                g.vram as vram_gb, g.tipo_memoria, g.consumo_wh as tdp_w
+                p.id_producto, p.modelo_producto, p.img_url, p.id_categoria, p.id_marca,
+                c.nombre_categoria as categoria, m.nombre_marca as marca,
+                g.id_gpu, g.vram, g.tipo_memoria, g.consumo_wh
             FROM productos p
             JOIN gpu g ON p.id_producto = g.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN marcas m ON p.id_marca = m.id_marca
             WHERE p.id_producto = %s
         """
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, (idProducto,))
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if not row:
+                return None
+            gpu = GPU(
+                idProducto=row['id_producto'],
+                modeloProducto=row['modelo_producto'],
+                imgUrl=row['img_url'],
+                urlOficial=None,
+                idCategoria=row['id_categoria'],
+                idMarca=row['id_marca'],
+                idGPU=row['id_gpu'],
+                vram=row['vram'],
+                tipoMemoria=row['tipo_memoria'],
+                consumoWh=row['consumo_wh']
+            )
+            gpu.categoria = row['categoria']
+            gpu.marca = row['marca']
+            return gpu
         except Exception as e:
             print(f"// errorObtenerGPU: {e}")
             return None
@@ -489,16 +561,37 @@ class ProductoDAO:
     def obtenerRAMPorId(self, idProducto):
         query = """
             SELECT
-                p.modelo_producto as modelo,
-                r.capacidad_gb_ram as capacidad_gb, r.tipo_ram as tipo_memoria, r.velocidad_mhz, r.latencia_cl as latencia
+                p.id_producto, p.modelo_producto, p.img_url, p.id_categoria, p.id_marca,
+                c.nombre_categoria as categoria, m.nombre_marca as marca,
+                r.id_ram, r.capacidad_gb_ram, r.velocidad_mhz, r.latencia_cl, r.tipo_ram
             FROM productos p
             JOIN ram r ON p.id_producto = r.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN marcas m ON p.id_marca = m.id_marca
             WHERE p.id_producto = %s
         """
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, (idProducto,))
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if not row:
+                return None
+            ram = RAM(
+                idProducto=row['id_producto'],
+                modeloProducto=row['modelo_producto'],
+                imgUrl=row['img_url'],
+                urlOficial=None,
+                idCategoria=row['id_categoria'],
+                idMarca=row['id_marca'],
+                idRAM=row['id_ram'],
+                capacidadGbRam=row['capacidad_gb_ram'],
+                velocidadMhz=row['velocidad_mhz'],
+                latenciaCl=row['latencia_cl'],
+                tipoRam=row['tipo_ram']
+            )
+            ram.categoria = row['categoria']
+            ram.marca = row['marca']
+            return ram
         except Exception as e:
             print(f"// errorObtenerRAM: {e}")
             return None
@@ -509,17 +602,38 @@ class ProductoDAO:
     def obtenerAlmacenamientoPorId(self, idProducto):
         query = """
             SELECT
-                p.modelo_producto as modelo,
-                a.capacidad_gb_almacenamiento as capacidad_gb, a.tipo_almacenamiento as tipo_disco,
-                a.vel_lectura as velocidad_lectura
+                p.id_producto, p.modelo_producto, p.img_url, p.id_categoria, p.id_marca,
+                c.nombre_categoria as categoria, m.nombre_marca as marca,
+                a.id_almacenamiento, a.capacidad_gb_almacenamiento, a.tipo_almacenamiento,
+                a.vel_lectura, a.vel_escritura
             FROM productos p
             JOIN almacenamiento a ON p.id_producto = a.id_producto
+            LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+            LEFT JOIN marcas m ON p.id_marca = m.id_marca
             WHERE p.id_producto = %s
         """
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, (idProducto,))
-            return cursor.fetchone()
+            row = cursor.fetchone()
+            if not row:
+                return None
+            alm = Almacenamiento(
+                idProducto=row['id_producto'],
+                modeloProducto=row['modelo_producto'],
+                imgUrl=row['img_url'],
+                urlOficial=None,
+                idCategoria=row['id_categoria'],
+                idMarca=row['id_marca'],
+                idAlmacenamiento=row['id_almacenamiento'],
+                capacidadGbAlmacenamiento=row['capacidad_gb_almacenamiento'],
+                tipoAlmacenamiento=row['tipo_almacenamiento'],
+                velLectura=row['vel_lectura'],
+                velEscritura=row['vel_escritura']
+            )
+            alm.categoria = row['categoria']
+            alm.marca = row['marca']
+            return alm
         except Exception as e:
             print(f"// errorObtenerAlmacenamiento: {e}")
             return None
@@ -580,8 +694,8 @@ class ProductoDAO:
                         c.nombre_categoria as categoria,
                         m.nombre_marca as marca
                     FROM productos p
-                    JOIN categorias c ON p.id_categoria = c.id_categoria
-                    JOIN marcas m ON p.id_marca = m.id_marca
+                    LEFT JOIN categorias c ON p.id_categoria = c.id_categoria
+                    LEFT JOIN marcas m ON p.id_marca = m.id_marca
                     WHERE p.id_producto = %s
                 """, (idProducto,))
                 producto = cursor.fetchone()
@@ -590,6 +704,17 @@ class ProductoDAO:
 
             if not producto:
                 return None
+
+            prod_obj = Producto(
+                idProducto=producto['id_producto'],
+                modeloProducto=producto['modelo'],
+                imgUrl=producto['img_url'],
+                urlOficial=None,
+                idCategoria=None,
+                idMarca=None
+            )
+            prod_obj.categoria = producto['categoria']
+            prod_obj.marca = producto['marca']
 
             categoria = producto['categoria']
             specs = None
@@ -608,7 +733,7 @@ class ProductoDAO:
             precios = self.obtenerPreciosProducto(idProducto)
 
             return {
-                'producto': producto,
+                'producto': prod_obj,
                 'specs': specs,
                 'precios': precios
             }

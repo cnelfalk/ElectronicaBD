@@ -19,6 +19,14 @@ class Almacenamiento(Producto):
             "capacidadGbAlmacenamiento": self.capacidadGbAlmacenamiento,
             "tipoAlmacenamiento": self.tipoAlmacenamiento,
             "velLectura": self.velLectura,
-            "velEscritura": self.velEscritura
+            "velEscritura": self.velEscritura,
+            
+            # Compatibilidad con frontend (snake_case)
+            "capacidad_gb": self.capacidadGbAlmacenamiento,
+            "tipo_disco": self.tipoAlmacenamiento,
+            "tipo_almacenamiento": self.tipoAlmacenamiento,
+            "velocidad_lectura": self.velLectura,
+            "vel_lectura": self.velLectura,
+            "vel_escritura": self.velEscritura
         })
         return dict_base

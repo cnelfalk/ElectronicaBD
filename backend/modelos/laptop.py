@@ -14,3 +14,28 @@ class Laptop(Producto):
         self.tamanioPantalla = tamanioPantalla
         self.tasaRefrescoHz = tasaRefrescoHz
         self.capacidadBateriaWh = capacidadBateriaWh
+
+    # to_dict - convierte la instancia en un diccionario
+    def to_dict(self):
+        d = super().to_dict()
+        d.update({
+            "cpu": self.cpu.to_dict() if hasattr(self.cpu, "to_dict") else self.cpu,
+            "gpu": self.gpu.to_dict() if hasattr(self.gpu, "to_dict") else self.gpu,
+            "ram": self.ram.to_dict() if hasattr(self.ram, "to_dict") else self.ram,
+            "almacenamiento": self.almacenamiento.to_dict() if hasattr(self.almacenamiento, "to_dict") else self.almacenamiento,
+            "pesoKg": self.pesoKg,
+            "tamanioPantalla": self.tamanioPantalla,
+            "tasaRefrescoHz": self.tasaRefrescoHz,
+            "capacidadBateriaWh": self.capacidadBateriaWh,
+            
+            # Compatibilidad con frontend (snake_case)
+            "cpu_modelo": self.cpu,
+            "gpu_modelo": self.gpu,
+            "ram_gb": self.ram,
+            "almacenamiento_gb": self.almacenamiento,
+            "peso_kg": self.pesoKg,
+            "tamanio_pantalla": self.tamanioPantalla,
+            "tasa_refresco_hz": self.tasaRefrescoHz,
+            "capacidad_bateria_wh": self.capacidadBateriaWh
+        })
+        return d

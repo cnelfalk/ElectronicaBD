@@ -76,13 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     btnGuardarComparacion.innerHTML = '✅ Guardada en Mis Comparaciones';
                     btnGuardarComparacion.style.opacity = '0.7';
                 } else {
-                    alert(datosJson.mensaje || 'Error al guardar la comparación.');
+                    mostrarAlerta(datosJson.mensaje || 'Error al guardar la comparación.');
                     btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
                     btnGuardarComparacion.disabled = false;
                 }
             } catch (error) {
                 console.error('Error al guardar comparación:', error);
-                alert('No se pudo guardar la comparación. Verificá tu conexión.');
+                mostrarAlerta('No se pudo guardar la comparación. Verificá tu conexión.');
                 btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
                 btnGuardarComparacion.disabled = false;
             }
@@ -105,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (error) {
             console.error('Error al conectar con la API de comparación:', error);
-            mostrarError('No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
+            mostrarError(error.message || 'No se pudo conectar con el servidor. Verificá que el backend esté corriendo.');
         }
     }
 

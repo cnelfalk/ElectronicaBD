@@ -141,18 +141,6 @@ DEFAULT CHARACTER SET = utf8mb3;
 
 
 -- -----------------------------------------------------
--- Table `techmatch`.`socket`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `techmatch`.`socket` (
-  `id_socket` INT NOT NULL AUTO_INCREMENT,
-  `nombre_socket` VARCHAR(45) NULL DEFAULT NULL,
-  PRIMARY KEY (`id_socket`))
-ENGINE = InnoDB
-AUTO_INCREMENT = 7
-DEFAULT CHARACTER SET = utf8mb3;
-
-
--- -----------------------------------------------------
 -- Table `techmatch`.`cpu`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `techmatch`.`cpu` (
@@ -162,17 +150,12 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`cpu` (
   `frecuencia_base` DECIMAL(4,2) NULL DEFAULT NULL,
   `frecuencia_turbo` DECIMAL(4,2) NULL DEFAULT NULL,
   `tdp` INT NULL DEFAULT NULL,
-  `id_socket` INT NOT NULL,
   `id_producto` INT NOT NULL,
   PRIMARY KEY (`id_CPU`),
-  INDEX `fk_CPU_Socket1_idx` (`id_socket` ASC) VISIBLE,
   INDEX `fk_CPU_Productos1_idx` (`id_producto` ASC) VISIBLE,
   CONSTRAINT `fk_CPU_Productos1`
     FOREIGN KEY (`id_producto`)
-    REFERENCES `techmatch`.`productos` (`id_producto`),
-  CONSTRAINT `fk_CPU_Socket1`
-    FOREIGN KEY (`id_socket`)
-    REFERENCES `techmatch`.`socket` (`id_socket`))
+    REFERENCES `techmatch`.`productos` (`id_producto`))
 ENGINE = InnoDB
 AUTO_INCREMENT = 93
 DEFAULT CHARACTER SET = utf8mb3;
@@ -252,27 +235,6 @@ AUTO_INCREMENT = 5
 DEFAULT CHARACTER SET = utf8mb3;
 
 
--- -----------------------------------------------------
--- Table `techmatch`.`placa_madre`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `techmatch`.`placa_madre` (
-  `id_placa_madre` INT NOT NULL AUTO_INCREMENT,
-  `formato_placa` VARCHAR(20) NULL DEFAULT NULL,
-  `tipo_ram_soportada` VARCHAR(45) NULL DEFAULT NULL,
-  `id_socket` INT NOT NULL,
-  `id_producto` INT NOT NULL,
-  PRIMARY KEY (`id_placa_madre`),
-  INDEX `fk_Placa_Madre_Socket1_idx` (`id_socket` ASC) VISIBLE,
-  INDEX `fk_Placa_Madre_Productos1_idx` (`id_producto` ASC) VISIBLE,
-  CONSTRAINT `fk_Placa_Madre_Productos1`
-    FOREIGN KEY (`id_producto`)
-    REFERENCES `techmatch`.`productos` (`id_producto`),
-  CONSTRAINT `fk_Placa_Madre_Socket1`
-    FOREIGN KEY (`id_socket`)
-    REFERENCES `techmatch`.`socket` (`id_socket`))
-ENGINE = InnoDB
-DEFAULT CHARACTER SET = utf8mb3;
-
 
 -- -----------------------------------------------------
 -- Table `techmatch`.`productos_perfiles`
@@ -347,189 +309,119 @@ ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb3;
 
 -- -----------------------------------------------------
--- Procedimientos Almacenados y Funciones
+-- Procedimiento Almacenado
 -- -----------------------------------------------------
 
 DELIMITER $$
 
--- 1. Procedimiento para registrar o actualizar el precio de venta de un producto en una tienda
-DROP PROCEDURE IF EXISTS `sp_registrar_precio_producto`$$
-CREATE PROCEDURE `sp_registrar_precio_producto`(
-    IN p_id_producto INT,
-    IN p_id_tienda INT,
-    IN p_precio DECIMAL(12,2),
-    IN p_url_producto VARCHAR(2083)
+-- Elimina una comparación borrando primero el detalle y luego la cabecera.
+DROP PROCEDURE IF EXISTS `sp_eliminar_comparacion`$$
+CREATE PROCEDURE `sp_eliminar_comparacion`(
+    IN p_id_comparacion INT
 )
 BEGIN
-    INSERT INTO `se_vende_en` (`id_producto`, `id_tienda`, `precio`, `url_producto`, `fec_actualizacion`)
-    VALUES (p_id_producto, p_id_tienda, p_precio, p_url_producto, NOW())
-    ON DUPLICATE KEY UPDATE 
-        `precio` = p_precio, 
-        `url_producto` = p_url_producto, 
-        `fec_actualizacion` = NOW();
+    -- 1. Borrar el detalle (tabla hija) para respetar la clave foránea
+    DELETE FROM contiene WHERE id_comparacion = p_id_comparacion;
+
+    -- 2. Borrar la cabecera
+    DELETE FROM comparaciones_guardadas WHERE id_comparacion = p_id_comparacion;
 END$$
 
--- 2. Procedimiento para obtener un reporte estadístico de precios de un producto
-DROP PROCEDURE IF EXISTS `sp_obtener_reporte_precios`$$
-CREATE PROCEDURE `sp_obtener_reporte_precios`(
-    IN p_id_producto INT
+-- Guarda una comparación en cascada: cabecera + dos filas de detalle.
+DROP PROCEDURE IF EXISTS `sp_guardar_comparacion`$$
+CREATE PROCEDURE `sp_guardar_comparacion`(
+    IN p_id_usuario     INT,
+    IN p_id_producto_a  INT,
+    IN p_id_producto_b  INT,
+    IN p_id_categoria   INT
 )
 BEGIN
-    SELECT 
-        p.id_producto,
-        p.modelo_producto,
-        MIN(s.precio) AS precio_minimo,
-        MAX(s.precio) AS precio_maximo,
-        AVG(s.precio) AS precio_promedio,
-        COUNT(s.id_tienda) AS cantidad_tiendas
-    FROM `productos` p
-    LEFT JOIN `se_vende_en` s ON p.id_producto = s.id_producto
-    WHERE p.id_producto = p_id_producto
-    GROUP BY p.id_producto, p.modelo_producto;
+    DECLARE v_id_comparacion INT;
+
+    -- 1. Insertar cabecera — MySQL genera el id por AUTO_INCREMENT
+    INSERT INTO comparaciones_guardadas (fec_creacion_comp, id_categoria, id_usuario)
+    VALUES (NOW(), p_id_categoria, p_id_usuario);
+
+    -- 2. Capturar el ID recién generado
+    SET v_id_comparacion = LAST_INSERT_ID();
+
+    -- 3. Insertar los dos productos en la tabla de detalle
+    INSERT IGNORE INTO contiene (id_producto, id_comparacion)
+    VALUES (p_id_producto_a, v_id_comparacion);
+
+    INSERT IGNORE INTO contiene (id_producto, id_comparacion)
+    VALUES (p_id_producto_b, v_id_comparacion);
+
+    -- 4. Devolver el ID generado para confirmación
+    SELECT v_id_comparacion AS id_comparacion;
 END$$
 
--- 3. Procedimiento para guardar/actualizar un favorito
-DROP PROCEDURE IF EXISTS `sp_guardar_favorito`$$
-CREATE PROCEDURE `sp_guardar_favorito`(
-    IN p_id_usuario INT,
-    IN p_id_producto INT
-)
-BEGIN
-    INSERT INTO `guarda_favorito` (`id_producto`, `id_usuario`, `fecha_agregado_fav`)
-    VALUES (p_id_producto, p_id_usuario, NOW())
-    ON DUPLICATE KEY UPDATE 
-        `fecha_agregado_fav` = NOW();
-END$$
+DELIMITER ;
 
--- 4. Función para obtener el precio mínimo de un producto
-DROP FUNCTION IF EXISTS `fn_obtener_precio_minimo`$$
-CREATE FUNCTION `fn_obtener_precio_minimo`(
-    p_id_producto INT
-) RETURNS DECIMAL(12,2)
-DETERMINISTIC
-READS SQL DATA
-BEGIN
-    DECLARE v_precio_min DECIMAL(12,2);
-    
-    SELECT MIN(`precio`) INTO v_precio_min
-    FROM `se_vende_en`
-    WHERE `id_producto` = p_id_producto;
-    
-    RETURN v_precio_min;
-END$$
 
--- 5. Función para calcular un puntaje sintético (0-100) para un CPU
-DROP FUNCTION IF EXISTS `fn_calcular_puntaje_cpu`$$
-CREATE FUNCTION `fn_calcular_puntaje_cpu`(
-    p_id_cpu INT
-) RETURNS INT
-DETERMINISTIC
-READS SQL DATA
-BEGIN
-    DECLARE v_nucleos INT;
-    DECLARE v_hilos INT;
-    DECLARE v_turbo DECIMAL(4,2);
-    DECLARE v_puntaje INT DEFAULT 0;
-    
-    SELECT `nucleos`, `hilos`, `frecuencia_turbo`
-    INTO v_nucleos, v_hilos, v_turbo
-    FROM `cpu`
-    WHERE `id_CPU` = p_id_cpu;
-    
-    -- Si no existe el CPU, retornamos 0
-    IF v_nucleos IS NULL THEN
-        RETURN 0;
-    END IF;
-    
-    -- Algoritmo simple ponderado: núcleos (40%), hilos (20%), turbo frequency (40%)
-    SET v_puntaje = (v_nucleos * 4) + (v_hilos * 1.5) + (COALESCE(v_turbo, 2.0) * 10);
-    
-    -- Limitar puntaje máximo a 100
-    IF v_puntaje > 100 THEN
-        SET v_puntaje = 100;
-    END IF;
-    
-    RETURN v_puntaje;
-END$$
+-- -----------------------------------------------------
+-- Vista
+-- -----------------------------------------------------
 
--- 6. Función para verificar compatibilidad de sockets entre CPU y Placa Madre
-DROP FUNCTION IF EXISTS `fn_verificar_compatibilidad_socket`$$
-CREATE FUNCTION `fn_verificar_compatibilidad_socket`(
-    p_id_cpu INT,
-    p_id_placa INT
-) RETURNS TINYINT(1)
-DETERMINISTIC
-READS SQL DATA
-BEGIN
-    DECLARE v_socket_cpu INT;
-    DECLARE v_socket_placa INT;
-    
-    SELECT `id_socket` INTO v_socket_cpu FROM `cpu` WHERE `id_CPU` = p_id_cpu;
-    SELECT `id_socket` INTO v_socket_placa FROM `placa_madre` WHERE `id_placa_madre` = p_id_placa;
-    
-    IF v_socket_cpu IS NOT NULL AND v_socket_placa IS NOT NULL AND v_socket_cpu = v_socket_placa THEN
-        RETURN 1;
-    ELSE
-        RETURN 0;
-    END IF;
-END$$
+-- Presenta el catálogo completo con categoría, marca y precio mínimo disponible.
+-- Centraliza la consulta más frecuente del sistema para simplificar futuras queries.
+CREATE OR REPLACE VIEW `vista_catalogo_completo` AS
+SELECT
+    p.id_producto,
+    p.modelo_producto,
+    p.img_url,
+    c.nombre_categoria,
+    m.nombre_marca,
+    MIN(s.precio)        AS precio_minimo,
+    COUNT(s.id_tienda)   AS cantidad_tiendas
+FROM productos p
+JOIN  categorias    c ON p.id_categoria = c.id_categoria
+JOIN  marcas        m ON p.id_marca     = m.id_marca
+LEFT JOIN se_vende_en s ON p.id_producto = s.id_producto
+GROUP BY
+    p.id_producto, p.modelo_producto, p.img_url,
+    c.nombre_categoria, m.nombre_marca;
 
--- 4b. Procedimiento alternativo para obtener el precio mínimo (evita error de binary logging/privilegios)
-DROP PROCEDURE IF EXISTS `sp_obtener_precio_minimo`$$
-CREATE PROCEDURE `sp_obtener_precio_minimo`(
-    IN p_id_producto INT,
-    OUT p_precio_min DECIMAL(12,2)
-)
-BEGIN
-    SELECT MIN(`precio`) INTO p_precio_min
-    FROM `se_vende_en`
-    WHERE `id_producto` = p_id_producto;
-END$$
 
--- 5b. Procedimiento alternativo para calcular el puntaje de CPU (evita error de binary logging/privilegios)
-DROP PROCEDURE IF EXISTS `sp_calcular_puntaje_cpu`$$
-CREATE PROCEDURE `sp_calcular_puntaje_cpu`(
-    IN p_id_cpu INT,
-    OUT p_puntaje INT
-)
+-- -----------------------------------------------------
+-- Trigger
+-- -----------------------------------------------------
+
+DELIMITER $$
+
+-- Valida que los productos de una comparación sean de la misma categoría.
+-- Se dispara BEFORE INSERT en contiene, antes de confirmar el segundo producto.
+DROP TRIGGER IF EXISTS `trg_validar_categoria_comparacion`$$
+CREATE TRIGGER `trg_validar_categoria_comparacion`
+BEFORE INSERT ON `contiene`
+FOR EACH ROW
 BEGIN
-    DECLARE v_nucleos INT;
-    DECLARE v_hilos INT;
-    DECLARE v_turbo DECIMAL(4,2);
-    
-    SELECT `nucleos`, `hilos`, `frecuencia_turbo`
-    INTO v_nucleos, v_hilos, v_turbo
-    FROM `cpu`
-    WHERE `id_CPU` = p_id_cpu;
-    
-    IF v_nucleos IS NULL THEN
-        SET p_puntaje = 0;
-    ELSE
-        SET p_puntaje = (v_nucleos * 4) + (v_hilos * 1.5) + (COALESCE(v_turbo, 2.0) * 10);
-        IF p_puntaje > 100 THEN
-            SET p_puntaje = 100;
+    DECLARE v_categoria_nuevo     INT;
+    DECLARE v_categoria_existente INT;
+    DECLARE v_count               INT;
+
+    -- Ver si ya hay al menos un producto en esta comparación
+    SELECT COUNT(*) INTO v_count
+    FROM contiene
+    WHERE id_comparacion = NEW.id_comparacion;
+
+    IF v_count > 0 THEN
+        -- Categoría del producto que se quiere insertar
+        SELECT id_categoria INTO v_categoria_nuevo
+        FROM productos
+        WHERE id_producto = NEW.id_producto;
+
+        -- Categoría del producto ya existente en la comparación
+        SELECT p.id_categoria INTO v_categoria_existente
+        FROM contiene c
+        JOIN productos p ON c.id_producto = p.id_producto
+        WHERE c.id_comparacion = NEW.id_comparacion
+        LIMIT 1;
+
+        IF v_categoria_nuevo <> v_categoria_existente THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Los productos de una comparación deben ser de la misma categoría.';
         END IF;
-    END IF;
-END$$
-
--- 6b. Procedimiento alternativo para verificar compatibilidad de sockets (evita error de binary logging/privilegios)
-DROP PROCEDURE IF EXISTS `sp_verificar_compatibilidad_socket`$$
-CREATE PROCEDURE `sp_verificar_compatibilidad_socket`(
-    IN p_id_cpu INT,
-    IN p_id_placa INT,
-    OUT p_compatible TINYINT(1)
-)
-BEGIN
-    DECLARE v_socket_cpu INT;
-    DECLARE v_socket_placa INT;
-    
-    SELECT `id_socket` INTO v_socket_cpu FROM `cpu` WHERE `id_CPU` = p_id_cpu;
-    SELECT `id_socket` INTO v_socket_placa FROM `placa_madre` WHERE `id_placa_madre` = p_id_placa;
-    
-    IF v_socket_cpu IS NOT NULL AND v_socket_placa IS NOT NULL AND v_socket_cpu = v_socket_placa THEN
-        SET p_compatible = 1;
-    ELSE
-        SET p_compatible = 0;
     END IF;
 END$$
 

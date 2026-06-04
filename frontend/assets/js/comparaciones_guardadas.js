@@ -124,7 +124,7 @@ async function eliminarComparacion(btn) {
     const idComparacion = btn.dataset.id;
     if (!idComparacion) return;
 
-    if (!confirm('¿Estás seguro de que querés eliminar esta comparación de tu historial?')) {
+    if (!(await mostrarConfirmacion('¿Estás seguro de que querés eliminar esta comparación de tu historial?'))) {
         return;
     }
 

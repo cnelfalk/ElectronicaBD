@@ -1,3 +1,4 @@
+<script src="assets/js/alertas.js"></script>
 <nav class="tm-navbar">
     <div class="tm-navbar-inner">
         <a class="tm-logo" href="catalogo.php">

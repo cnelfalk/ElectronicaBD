@@ -1,6 +1,8 @@
 import mysql.connector
 from database.conexion import ConexionDB
 
+from modelos.comparacion_guardada import ComparacionGuardada
+
 class ComparacionDAO:
     @property
     def conexion(self):
@@ -8,55 +10,58 @@ class ComparacionDAO:
 
     def guardarComparacion(self, id_usuario, id_producto_a, id_producto_b, id_categoria=1):
         """
-        Guarda una comparación aprovechando el AUTO_INCREMENT de la base de datos.
-        Inserta en cascada en las tablas cabecera (comparaciones_guardadas) y detalle (contiene).
+        Guarda una comparación llamando al stored procedure sp_guardar_comparacion.
+        El SP inserta la cabecera (comparaciones_guardadas) y el detalle (contiene)
+        de forma atómica dentro de MySQL, evitando estados intermedios inconsistentes.
         """
         cursor = self.conexion.cursor()
         try:
-            # 1. Insertamos la cabecera (MySQL genera el id_comparacion solo por AUTO_INCREMENT)
-            sql_cabecera = """
-                INSERT INTO comparaciones_guardadas (fec_creacion_comp, id_categoria, id_usuario) 
-                VALUES (NOW(), %s, %s)
-            """
-            cursor.execute(sql_cabecera, (id_categoria, id_usuario))
-            
-            # 2. Capturamos el ID autogenerado inmediatamente
-            id_comparacion = cursor.lastrowid
-
-            # 3. Insertamos las dos filas de detalle en la tabla 'contiene'
-            sql_detalle = """
-                INSERT IGNORE INTO contiene (id_producto, id_comparacion) 
-                VALUES (%s, %s)
-            """
-            # Producto A
-            cursor.execute(sql_detalle, (id_producto_a, id_comparacion))
-            # Producto B
-            cursor.execute(sql_detalle, (id_producto_b, id_comparacion))
-
+            cursor.callproc('sp_guardar_comparacion', [
+                id_usuario,
+                id_producto_a,
+                id_producto_b,
+                id_categoria
+            ])
             self.conexion.commit()
             return True
         except mysql.connector.Error as err:
-            print(f"// [ComparacionDAO] Error al guardar con AUTO_INCREMENT: {err}")
+            print(f"// [ComparacionDAO] Error al guardar comparación: {err}")
             self.conexion.rollback()
             return False
         finally:
             cursor.close()
 
     def eliminarComparacion(self, id_comparacion):
-        """Elimina una comparación limpiando primero el detalle y luego la cabecera."""
+        """Elimina una comparación llamando al stored procedure sp_eliminar_comparacion."""
         cursor = self.conexion.cursor()
         try:
-            # 1. Eliminar del detalle por clave foránea
-            cursor.execute("DELETE FROM contiene WHERE id_comparacion = %s", (id_comparacion,))
-            
-            # 2. Eliminar la cabecera
-            cursor.execute("DELETE FROM comparaciones_guardadas WHERE id_comparacion = %s", (id_comparacion,))
-            
+            cursor.callproc('sp_eliminar_comparacion', [id_comparacion])
             self.conexion.commit()
             return True
         except mysql.connector.Error as err:
-            print(f"// [ComparacionDAO] Error al eliminar: {err}")
+            print(f"// [ComparacionDAO] Error al llamar sp_eliminar_comparacion: {err}")
             self.conexion.rollback()
+            return False
+        finally:
+            cursor.close()
+
+    def existeComparacion(self, id_usuario, id_producto_a, id_producto_b):
+        """Devuelve True si el usuario ya tiene guardada una comparación con exactamente esos dos productos."""
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            sql = """
+                SELECT cg.id_comparacion
+                FROM comparaciones_guardadas cg
+                WHERE cg.id_usuario = %s
+                  AND (SELECT COUNT(*) FROM contiene c WHERE c.id_comparacion = cg.id_comparacion) = 2
+                  AND EXISTS (SELECT 1 FROM contiene c WHERE c.id_comparacion = cg.id_comparacion AND c.id_producto = %s)
+                  AND EXISTS (SELECT 1 FROM contiene c WHERE c.id_comparacion = cg.id_comparacion AND c.id_producto = %s)
+                LIMIT 1
+            """
+            cursor.execute(sql, (id_usuario, id_producto_a, id_producto_b))
+            return cursor.fetchone() is not None
+        except mysql.connector.Error as err:
+            print(f"// [ComparacionDAO] Error al verificar duplicado: {err}")
             return False
         finally:
             cursor.close()
@@ -81,7 +86,20 @@ class ComparacionDAO:
                 ORDER BY cg.fec_creacion_comp DESC
             """
             cursor.execute(sql, (id_usuario,))
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+            comparaciones = []
+            for row in rows:
+                cg = ComparacionGuardada(
+                    idComparacion=row['id_comparacion'],
+                    fecCreacionComp=row['fecha'],
+                    idCategoria=row['categoria'],
+                    idUsuario=id_usuario,
+                    productos=[]
+                )
+                cg.ids_productos = row['ids_productos']
+                cg.duplas_modelos = row['duplas_modelos']
+                comparaciones.append(cg)
+            return comparaciones
         except mysql.connector.Error as err:
             print(f"// [ComparacionDAO] Error al listar: {err}")
             return []

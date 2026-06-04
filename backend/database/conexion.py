@@ -19,7 +19,8 @@ class ConexionDB:
                     user=Config.DB_USER,
                     password=Config.DB_PASSWORD,
                     database=Config.DB_NAME,
-                    port=3306
+                    port=3306,
+                    connection_timeout=15
                 )
                 # Forzar cursores buferizados por defecto para evitar "Unread result found"
                 orig_cursor = conn.cursor

@@ -359,3 +359,28 @@ def extraer_specs_almacenamiento(titulo):
         'velocidad_lectura': vel_lectura,
         'formato': formato
     }
+
+def validar_url_retail(url, tienda):
+    """
+    Valida si un enlace de retail es directo al producto y funcional.
+    """
+    if not url:
+        return False
+    url_lower = url.lower()
+    if tienda == "Compra Gamer":
+        if "compragamer.com/producto/" not in url_lower:
+            return False
+        # Deben terminar con un ID numérico precedido por guion bajo, ej: _15473
+        # Esto filtra enlaces genéricos como /productos o /producto/rtx-4060 sin ID real
+        if not re.search(r'_\d+(?:\?.*)?$', url_lower):
+            return False
+        return True
+    elif tienda == "Mercado Libre":
+        # Descartar links de anuncios/clicks que expiran o fallan en scrapers
+        if "click1.mercadolibre" in url_lower or "click.mercadolibre" in url_lower or "/mclics/" in url_lower:
+            return False
+        # Solo se permiten URLs que apunten a artículos reales o catálogo de producto MLA
+        if "articulo.mercadolibre.com.ar" in url_lower or "/p/mla" in url_lower:
+            return True
+        return False
+    return True

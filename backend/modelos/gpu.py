@@ -17,6 +17,12 @@ class GPU(Producto):
             "idGPU": self.idGPU,
             "vram": self.vram,
             "tipoMemoria": self.tipoMemoria,
-            "consumoWh": self.consumoWh
+            "consumoWh": self.consumoWh,
+            
+            # Compatibilidad con frontend (snake_case)
+            "vram_gb": self.vram,
+            "tipo_memoria": self.tipoMemoria,
+            "tdp_w": self.consumoWh,
+            "consumo_wh": self.consumoWh
         })
         return dict_base

@@ -9,6 +9,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from scrapers.scraper_base import ScraperBase
+from utils.normalizacion import validar_url_retail
 
 
 class MercadoLibreScraper(ScraperBase):
@@ -56,6 +57,11 @@ class MercadoLibreScraper(ScraperBase):
                     modelo = titulo_tag.text.strip()
                     modelo_lower = modelo.lower()
 
+                    # Safety check: skip used items
+                    if "usado" in item.text.lower():
+                        print(f"  [ML] Filtrado (producto usado): {modelo[:60]}")
+                        continue
+
                     # Exclusiones fuertes: siempre se filtran
                     if re.search(self.EXCLUSIONES_FUERTES, modelo_lower):
                         print(f"  [ML] Filtrado (accesorio): {modelo[:60]}")
@@ -76,6 +82,11 @@ class MercadoLibreScraper(ScraperBase):
                     urlVenta = enlace_tag['href'] if enlace_tag else ""
                     if urlVenta and '?' in urlVenta:
                         urlVenta = urlVenta.split('?')[0]
+
+                    # Safety check: skip invalid URLs (sponsored ads, etc.)
+                    if not validar_url_retail(urlVenta, self.TIENDA):
+                        print(f"  [ML] Enlace descartado por invalido: {urlVenta}")
+                        continue
 
                     # Imagen del producto (ML usa data-src para lazy loading)
                     img_tag = item.find('img', class_='ui-search-result-image__element') or item.find('img')
@@ -346,10 +357,21 @@ class CompraGamerScraper(ScraperBase):
 
         # ── URL ──────────────────────────────────────────────────────────────
         urlVenta = ""
-        anchor = item if item.name == 'a' else item.find('a', href=True)
+        anchor = None
+        if item.name == 'a' and '/producto/' in item.get('href', ''):
+            anchor = item
+        else:
+            anchor = item.find('a', href=lambda h: h and '/producto/' in h)
+            if not anchor:
+                anchor = item.find('a', href=True)
+        
         if anchor and anchor.get('href'):
             href = anchor['href']
             urlVenta = f"{self.BASE_URL}{href}" if href.startswith('/') else href
+
+        if not validar_url_retail(urlVenta, self.TIENDA):
+            print(f"  [CG] Enlace descartado por invalido: {urlVenta}")
+            return False
 
         # ── Imagen ───────────────────────────────────────────────────────────
         img_tag = item.find('img')

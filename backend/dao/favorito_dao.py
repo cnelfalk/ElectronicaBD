@@ -1,5 +1,7 @@
 from database.conexion import ConexionDB
 
+from modelos.producto import Producto
+
 class FavoritoDAO:
     @property
     def conexion(self):
@@ -42,7 +44,22 @@ class FavoritoDAO:
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(query, (idUsuario,))
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+            favoritos = []
+            for row in rows:
+                p = Producto(
+                    idProducto=row['id_producto'],
+                    modeloProducto=row['modelo'],
+                    imgUrl=row['img_url'],
+                    urlOficial=None,
+                    idCategoria=None,
+                    idMarca=None
+                )
+                p.categoria = row['categoria']
+                p.marca = row['marca']
+                p.fecha_agregado_fav = row['fecha_agregado_fav']
+                favoritos.append(p)
+            return favoritos
         except Exception as e:
             print(f"// errorObtenerFavoritos: {e}")
             return []
