@@ -1,7 +1,7 @@
 <footer class="tm-footer">
     <div class="tm-footer-inner">
         <div class="tm-footer-brand">
-            <a class="tm-logo" href="catalogo.php" style="font-size: 1.15rem;">
+            <a class="tm-logo" href="index.php" style="font-size: 1.15rem;">
                 <div class="tm-logo-icon" style="width:28px; height:28px; font-size:0.85rem;">T</div>
                 <span>TechMatch</span>
             </a>
@@ -11,7 +11,7 @@
         <div class="tm-footer-col">
             <h4>Plataforma</h4>
             <ul>
-                <li><a href="catalogo.php#zona-catalogo">Catálogo</a></li>
+                <li><a href="catalogo.php">Catálogo</a></li>
                 <li><a href="comparar.php">Comparador</a></li>
                 <li><a href="registro.php" id="linkCuentaFooter">Crear Cuenta</a></li>
                 <li><a href="login.php" id="linkSesionFooter">Iniciar Sesión</a></li>
@@ -24,23 +24,30 @@
         <div class="tm-footer-col">
             <h4>Categorías</h4>
             <ul>
-                <li><a href="catalogo.php?categoria=laptop#zona-catalogo">Laptops</a></li>
-                <li><a href="catalogo.php?categoria=cpu#zona-catalogo">Procesadores</a></li>
-                <li><a href="catalogo.php?categoria=gpu#zona-catalogo">Placas de Video</a></li>
-                <li><a href="catalogo.php?categoria=ram#zona-catalogo">Memoria RAM</a></li>
-                <li><a href="catalogo.php?categoria=almacenamiento#zona-catalogo">Almacenamiento</a></li>
+                <li><a href="catalogo.php?categoria=Laptop#zona-catalogo">Laptops</a></li>
+                <li><a href="catalogo.php?categoria=CPU#zona-catalogo">Procesadores</a></li>
+                <li><a href="catalogo.php?categoria=GPU#zona-catalogo">Placas de Video</a></li>
+                <li><a href="catalogo.php?categoria=RAM#zona-catalogo">Memoria RAM</a></li>
+                <li><a href="catalogo.php?categoria=Almacenamiento#zona-catalogo">Almacenamiento</a></li>
             </ul>
         </div>
 
         <div class="tm-footer-col">
             <h4>Marcas</h4>
-            <ul>
-                <li><a href="catalogo.php?marca=asus#zona-catalogo">ASUS</a></li>
-                <li><a href="catalogo.php?marca=lenovo#zona-catalogo">Lenovo</a></li>
-                <li><a href="catalogo.php?marca=intel#zona-catalogo">Intel</a></li>
-                <li><a href="catalogo.php?marca=amd#zona-catalogo">AMD</a></li>
-                <li><a href="catalogo.php?marca=nvidia#zona-catalogo">NVIDIA</a></li>
-            </ul>
+            <div style="display: flex; gap: 30px;">
+                <ul style="margin: 0; padding: 0;">
+                    <li><a href="catalogo.php?marca=asus#zona-catalogo">ASUS</a></li>
+                    <li><a href="catalogo.php?marca=lenovo#zona-catalogo">Lenovo</a></li>
+                    <li><a href="catalogo.php?marca=intel#zona-catalogo">Intel</a></li>
+                    <li><a href="catalogo.php?marca=amd#zona-catalogo">AMD</a></li>
+                </ul>
+                <ul style="margin: 0; padding: 0;">
+                    <li><a href="catalogo.php?marca=nvidia#zona-catalogo">NVIDIA</a></li>
+                    <li><a href="catalogo.php?marca=corsair#zona-catalogo">Corsair</a></li>
+                    <li><a href="catalogo.php?marca=kingston#zona-catalogo">Kingston</a></li>
+                    <li><a href="catalogo.php?marca=western%20digital#zona-catalogo">Western Digital</a></li>
+                </ul>
+            </div>
         </div>
     </div>
 
@@ -55,12 +62,50 @@
             <span class="tm-tech-badge">Flask</span>
             <span class="tm-tech-badge">MySQL</span>
             <span class="tm-tech-badge">Selenium</span>
-        </div>
     </div>
 </footer>
 
+<!-- Botón Regresar al tope -->
+<button id="btnBackToTop" class="tm-back-to-top" aria-label="Regresar al tope de la página">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="18 15 12 9 6 15"></polyline>
+    </svg>
+</button>
+
 <script>
+// Función global para alternar la visibilidad de la contraseña
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        btn.classList.add('visible-pass');
+    } else {
+        input.type = 'password';
+        btn.classList.remove('visible-pass');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Lógica para el botón "Regresar al tope"
+    const btnBackToTop = document.getElementById('btnBackToTop');
+    if (btnBackToTop) {
+        window.addEventListener('scroll', () => {
+            if (window.scrollY > 300) {
+                btnBackToTop.classList.add('visible');
+            } else {
+                btnBackToTop.classList.remove('visible');
+            }
+        });
+
+        btnBackToTop.addEventListener('click', () => {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    }
+
     // Capturamos todos los enlaces dinámicos de la columna Plataforma
     const linkCuentaFooter = document.getElementById('linkCuentaFooter');
     const linkSesionFooter = document.getElementById('linkSesionFooter');
@@ -100,8 +145,8 @@ document.addEventListener('DOMContentLoaded', () => {
                             console.error("Error al limpiar sesión:", error);
                         }
                         
-                        // Lo mandamos al catálogo
-                        window.location.href = 'catalogo.php'; 
+                        // Lo mandamos al inicio
+                        window.location.href = 'index.php'; 
                     }
                 });
             }

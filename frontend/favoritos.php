@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mis Favoritos — TechMatch</title>
+    <title>Mis favoritos — TechMatch</title>
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -12,10 +13,10 @@
 
     <section class="tm-catalog">
         <div class="tm-catalog-header">
-            <h2>Mis Productos Guardados</h2>
+            <h2 class="tm-page-title">Mis favoritos</h2>
         </div>
 
-        <div class="tm-product-grid" id="contenedorFavoritos" style="grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));">
+        <div class="tm-product-grid" id="contenedorFavoritos">
             <div class="tm-loading">
                 <div class="tm-spinner"></div>
                 <p>Cargando favoritos...</p>

@@ -7,16 +7,18 @@ class UsuarioDAO:
     def conexion(self):
         return ConexionDB.obtenerInstancia()
 
-    # obtenerPorEmail - busca un usuario especifico utilizando su correo electronico
-    def obtenerPorEmail(self, emailUsuario):
+    # obtenerPorIdentificador - busca un usuario utilizando su correo electronico o nombre de usuario
+    def obtenerPorIdentificador(self, identificador):
         # prepararConsulta - define el query SQL previniendo inyecciones SQL
-        query = "SELECT * FROM usuarios WHERE email_usuario = %s"
+        # ACÁ ESTÁ EL CAMBIO: Buscamos por email O por nombre
+        query = "SELECT * FROM usuarios WHERE email_usuario = %s OR nombre_usuario = %s"
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor.execute(query, (emailUsuario,))
+            # Pasamos el identificador dos veces para que reemplace ambos %s
+            cursor.execute(query, (identificador, identificador))
             registro = cursor.fetchone()
         except Exception as e:
-            print(f"// errorObtenerPorEmail: {e}")
+            print(f"// errorObtenerPorIdentificador: {e}")
             return None
         finally:
             cursor.close()
@@ -30,6 +32,7 @@ class UsuarioDAO:
                 contraseniaUsuario=registro['contrasenia_usuario'],
                 fecRegistro=registro['fec_registro']
             )
+            
         return None
 
     # crearUsuario - inserta un nuevo registro de usuario en la base de datos
@@ -47,5 +50,20 @@ class UsuarioDAO:
             self.conexion.rollback()
             print(f"// errorAlCrearUsuario: {e}")
             return None
+        finally:
+            cursor.close()
+
+    # actualizarContrasenia - actualiza la contraseña hasheada de un usuario existente
+    def actualizarContrasenia(self, idUsuario, nuevaContraseniaHash):
+        query = "UPDATE usuarios SET contrasenia_usuario = %s WHERE id_usuario = %s"
+        cursor = self.conexion.cursor()
+        try:
+            cursor.execute(query, (nuevaContraseniaHash, idUsuario))
+            self.conexion.commit()
+            return cursor.rowcount > 0
+        except Exception as e:
+            self.conexion.rollback()
+            print(f"// errorAlActualizarContrasenia: {e}")
+            return False
         finally:
             cursor.close()

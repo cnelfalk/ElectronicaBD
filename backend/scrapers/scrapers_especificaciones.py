@@ -30,8 +30,21 @@ class MercadoLibreScraper(ScraperBase):
     # Exclusiones ambiguas: solo se aplican si NO hay keywords de laptop en el titulo
     EXCLUSIONES_AMBIGUAS = r'\b(teclado|teclados|pantalla|pantallas|bateria|baterias|memoria\s+ram|modulo)\b'
 
+    RUTAS_ML = {
+        'CPU': 'computacion/componentes-pc/procesadores',
+        'GPU': 'computacion/componentes-pc/placas-video',
+        'RAM': 'computacion/componentes-pc/memorias-ram',
+        'Laptop': 'computacion/laptops-accesorios/notebooks',
+        'Almacenamiento': 'computacion/componentes-pc/discos-accesorios',
+    }
+
+    def __init__(self, marca, categoria="Laptop"):
+        super().__init__(marca)
+        self.categoria = categoria
+
     def ejecutarScraping(self):
-        url = f"https://listado.mercadolibre.com.ar/computacion/laptops-accesorios/notebooks/{self.marca.lower()}"
+        ruta = self.RUTAS_ML.get(self.categoria, 'computacion')
+        url = f"https://listado.mercadolibre.com.ar/{ruta}/{self.marca.lower()}"
         print(f"  [ML] Buscando '{self.marca}' en {url}")
 
         driver = self._crearDriver()
@@ -67,11 +80,12 @@ class MercadoLibreScraper(ScraperBase):
                         print(f"  [ML] Filtrado (accesorio): {modelo[:60]}")
                         continue
 
-                    # Exclusiones ambiguas: solo filtrar si el titulo NO contiene keywords de laptop
-                    es_laptop = any(kw in modelo_lower for kw in self.KEYWORDS_LAPTOP)
-                    if not es_laptop and re.search(self.EXCLUSIONES_AMBIGUAS, modelo_lower):
-                        print(f"  [ML] Filtrado (probablemente repuesto): {modelo[:60]}")
-                        continue
+                    # Exclusiones específicas por categoría
+                    if self.categoria == "Laptop":
+                        es_laptop = any(kw in modelo_lower for kw in self.KEYWORDS_LAPTOP)
+                        if not es_laptop and re.search(self.EXCLUSIONES_AMBIGUAS, modelo_lower):
+                            print(f"  [ML] Filtrado (probablemente repuesto): {modelo[:60]}")
+                            continue
 
                     precio_tag = item.find('span', class_='andes-money-amount__fraction')
                     if not precio_tag:
@@ -99,7 +113,7 @@ class MercadoLibreScraper(ScraperBase):
                     # Solo guardamos precio, link e imagen — SIN specs técnicas
                     self.dao.upsertProductoRetail(
                         modelo, imgUrl, self.marca,
-                        "Laptop",
+                        self.categoria,
                         precio, urlVenta, self.TIENDA
                     )
                     print(f"  [ML] Guardado: {modelo[:60]} — ${precio}")
@@ -284,15 +298,21 @@ class CompraGamerScraper(ScraperBase):
         modelo_lower = modelo.lower()
 
         # ── Filtros ──────────────────────────────────────────────────────────
-        # Para Intel: los CPUs se nombran "Core i9..." sin la palabra "Intel"
         aliases = {
             'intel': ['intel', 'core i3', 'core i5', 'core i7', 'core i9', 'core ultra'],
             'nvidia': ['nvidia', 'geforce', 'rtx', 'gtx'],
             'kingston': ['kingston', 'fury', 'hyperx'],
             'amd': ['amd', 'radeon', 'rx '],
+            'western digital': ['western digital', 'wd ', 'wd_black', 'wd_blue', 'wd_green', 'wd_red'],
+            'adata': ['adata', 'xpg'],
+            'corsair': ['corsair', 'vengeance'],
+            'crucial': ['crucial'],
+            'team': ['team', 'teamgroup', 't-force'],
+            'gskill': ['g.skill', 'gskill', 'trident', 'ripjaws'],
+            'patriot': ['patriot', 'viper'],
         }
         terminos = aliases.get(self.marca.lower(), [self.marca.lower()])
-        if not any(t in modelo_lower for t in terminos):
+        if self.marca.lower() != 'todas' and not any(t in modelo_lower for t in terminos):
             return False
 
         if any(excl in modelo_lower for excl in self.EXCLUSIONES):

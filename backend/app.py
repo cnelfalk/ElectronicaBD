@@ -47,16 +47,79 @@ def registrarUsuarioEndpoint():
 def loginUsuarioEndpoint():
     try:
         datos = request.get_json()
-        emailUsuario = datos.get('emailUsuario')
+        
+        # ---------------------------------------------------------
+        # CAMBIO: Ahora recibimos 'identificador' desde el frontend
+        # ---------------------------------------------------------
+        identificador = datos.get('identificador')
         contraseniaPlana = datos.get('contraseniaUsuario')
 
-        if not emailUsuario or not contraseniaPlana:
+        if not identificador or not contraseniaPlana:
             return jsonify({'success': False, 'mensaje': 'Faltan credenciales'}), 400
 
-        resultado = authServicio.autenticarUsuario(emailUsuario, contraseniaPlana)
+        # Pasamos el identificador (que puede ser email o usuario) al servicio
+        resultado = authServicio.autenticarUsuario(identificador, contraseniaPlana)
         
         # retornarRespuesta - 200 OK o 401 Unauthorized si las credenciales son invalidas
         return jsonify(resultado), 200 if resultado['success'] else 401
+
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# ══════════════════════════════════════════════════════
+#  RECUPERACIÓN DE CONTRASEÑA
+# ══════════════════════════════════════════════════════
+
+# solicitarRecuperacionEndpoint - recibe POST con email y envía código de recuperación
+@app.route('/api/recuperar/solicitar', methods=['POST'])
+def solicitarRecuperacionEndpoint():
+    try:
+        datos = request.get_json()
+        emailUsuario = datos.get('emailUsuario')
+
+        if not emailUsuario:
+            return jsonify({'success': False, 'mensaje': 'Se requiere un correo electrónico'}), 400
+
+        resultado = authServicio.solicitarRecuperacion(emailUsuario)
+        return jsonify(resultado), 200
+
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# verificarCodigoEndpoint - recibe POST con email y código, devuelve token si es válido
+@app.route('/api/recuperar/verificar', methods=['POST'])
+def verificarCodigoEndpoint():
+    try:
+        datos = request.get_json()
+        emailUsuario = datos.get('emailUsuario')
+        codigo = datos.get('codigo')
+
+        if not emailUsuario or not codigo:
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos'}), 400
+
+        resultado = authServicio.verificarCodigo(emailUsuario, codigo)
+        return jsonify(resultado), 200 if resultado['success'] else 400
+
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# cambiarContraseniaEndpoint - recibe POST con email, token y nueva contraseña
+@app.route('/api/recuperar/cambiar', methods=['POST'])
+def cambiarContraseniaEndpoint():
+    try:
+        datos = request.get_json()
+        emailUsuario = datos.get('emailUsuario')
+        token = datos.get('token')
+        nuevaContrasenia = datos.get('nuevaContrasenia')
+
+        if not emailUsuario or not token or not nuevaContrasenia:
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos'}), 400
+
+        if len(nuevaContrasenia) < 6:
+            return jsonify({'success': False, 'mensaje': 'La contraseña debe tener al menos 6 caracteres'}), 400
+
+        resultado = authServicio.cambiarContrasenia(emailUsuario, token, nuevaContrasenia)
+        return jsonify(resultado), 200 if resultado['success'] else 400
 
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
@@ -103,20 +166,16 @@ def detalleProductoEndpoint(idProducto):
 @app.route('/api/comparar', methods=['GET'])
 def compararEndpoint():
     try:
-        # extraerParametros - Capturamos los IDs y el perfil desde la URL
-        # Usamos type=int para forzar que los IDs sean numeros y evitar errores de SQL
         idProductoA = request.args.get('idA', type=int)
         idProductoB = request.args.get('idB', type=int)
         perfilUso = request.args.get('perfil', default='Uso General', type=str)
 
-        # validacionBasica - Comprobamos que el frontend haya enviado ambos IDs
         if not idProductoA or not idProductoB:
             return jsonify({
                 'success': False, 
                 'mensaje': 'Se requieren exactamente dos IDs (idA, idB) para comparar.'
             }), 400
 
-        # Obtener las categorías de los dos productos seleccionados
         categoriaA = comparacionServicio.productoDao.obtenerCategoriaPorId(idProductoA)
         categoriaB = comparacionServicio.productoDao.obtenerCategoriaPorId(idProductoB)
 
@@ -126,14 +185,12 @@ def compararEndpoint():
                 'mensaje': 'Uno o ambos productos no existen o no tienen una categoría asignada.'
             }), 404
 
-        # Validar que ambos pertenezcan a la misma categoría
         if categoriaA != categoriaB:
             return jsonify({
                 'success': False,
                 'mensaje': f'No se pueden comparar productos de diferentes categorías ({categoriaA} vs {categoriaB}).'
             }), 400
 
-        # Redirigir al servicio adecuado según la categoría
         if categoriaA == 'Laptop':
             resultado = comparacionServicio.generarRecomendacionLaptops(idProductoA, idProductoB, perfilUso)
         elif categoriaA == 'CPU':
@@ -150,49 +207,22 @@ def compararEndpoint():
                 'mensaje': f'La categoría {categoriaA} no está soportada para comparación actualmente.'
             }), 400
         
-        # verificarRespuesta - Si el servicio no encontro los IDs en la BD, devuelve un 404 Not Found
         if not resultado.get('success'):
             return jsonify(resultado), 404
 
-        # retornarJson - Si todo salio bien, devolvemos el veredicto completo
+        # Verificar si la comparación ya fue guardada por el usuario
+        idUsuario = request.args.get('idUsuario', type=int)
+        if idUsuario:
+            resultado['yaGuardada'] = comparacionServicio.comparacionDao.existeComparacion(idUsuario, idProductoA, idProductoB)
+        else:
+            resultado['yaGuardada'] = False
+
         return jsonify(resultado), 200
 
     except Exception as e:
-        # atraparErrores - Si algo explota en Python, evitamos que el servidor se caiga
         return jsonify({'success': False, 'mensaje': f'Error interno del servidor: {str(e)}'}), 500
 
-@app.route('/api/favoritos/agregar', methods=['POST'])
-def agregarFavoritoEndpoint():
-    try:
-        datos = request.get_json()
-        idUsuario = datos.get('idUsuario')
-        idProducto = datos.get('idProducto')
-
-        resultado = favoritoServicio.agregar(idUsuario, idProducto)
-        return jsonify(resultado), 200 if resultado['success'] else 400
-    except Exception as e:
-        return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
-
-@app.route('/api/favoritos/<int:idUsuario>', methods=['GET'])
-def listarFavoritosEndpoint(idUsuario):
-    try:
-        resultado = favoritoServicio.listar(idUsuario)
-        return jsonify(resultado), 200 if resultado['success'] else 400
-    except Exception as e:
-        return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
-
-@app.route('/api/favoritos/eliminar', methods=['DELETE'])
-def eliminarFavoritoEndpoint():
-    try:
-        datos = request.get_json()
-        idUsuario = datos.get('idUsuario')
-        idProducto = datos.get('idProducto')
-        
-        resultado = favoritoServicio.eliminar(idUsuario, idProducto)
-        return jsonify(resultado), 200 if resultado['success'] else 400
-    except Exception as e:
-        return jsonify({'success': False, 'mensaje': f'Error: {str(e)}'}), 500
-
+# guardarComparacionEndpoint - recibe POST con idUsuario, idProductoA e idProductoB y guarda la comparacion
 @app.route('/api/comparar/guardar', methods=['POST'])
 def guardarComparacionEndpoint():
     try:
@@ -202,18 +232,15 @@ def guardarComparacionEndpoint():
         idProductoB = datos.get('idProductoB')
 
         if not idUsuario or not idProductoA or not idProductoB:
-            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos (idUsuario, idProductoA, idProductoB)'}), 400
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos'}), 400
 
-        # Obtener el id_categoria numerico directo desde el DAO (sin abrir cursores en el controlador)
+        # Obtener idCategoria del primer producto
         idCategoria = comparacionServicio.productoDao.obtenerIdCategoriaNumerica(idProductoA)
 
         resultado = comparacionServicio.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
-        if resultado.get('duplicado'):
-            return jsonify(resultado), 409
-        return jsonify(resultado), 200 if resultado['success'] else 500
+        return jsonify(resultado), 200 if resultado['success'] else 400
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
-
 
 @app.route('/api/comparar/historial/<int:idUsuario>', methods=['GET'])
 def obtenerHistorialComparacionesEndpoint(idUsuario):
@@ -231,6 +258,51 @@ def eliminarComparacionEndpoint(idComparacion):
             return jsonify({'success': True, 'mensaje': 'Comparación eliminada exitosamente'}), 200
         else:
             return jsonify({'success': False, 'mensaje': 'Error al eliminar la comparación'}), 500
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# ══════════════════════════════════════════════════════
+#  FAVORITOS
+# ══════════════════════════════════════════════════════
+
+# obtenerFavoritosEndpoint - recibe GET con idUsuario y devuelve la lista de favoritos
+@app.route('/api/favoritos/<int:idUsuario>', methods=['GET'])
+def obtenerFavoritosEndpoint(idUsuario):
+    try:
+        resultado = favoritoServicio.listar(idUsuario)
+        return jsonify(resultado), 200
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# agregarFavoritoEndpoint - recibe POST con idUsuario e idProducto y agrega a favoritos
+@app.route('/api/favoritos/agregar', methods=['POST'])
+def agregarFavoritoEndpoint():
+    try:
+        datos = request.get_json()
+        idUsuario = datos.get('idUsuario')
+        idProducto = datos.get('idProducto')
+
+        if not idUsuario or not idProducto:
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos'}), 400
+
+        resultado = favoritoServicio.agregar(idUsuario, idProducto)
+        return jsonify(resultado), 200 if resultado['success'] else 400
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# eliminarFavoritoEndpoint - recibe DELETE con idUsuario e idProducto y remueve de favoritos
+@app.route('/api/favoritos/eliminar', methods=['DELETE'])
+def eliminarFavoritoEndpoint():
+    try:
+        datos = request.get_json()
+        idUsuario = datos.get('idUsuario')
+        idProducto = datos.get('idProducto')
+
+        if not idUsuario or not idProducto:
+            return jsonify({'success': False, 'mensaje': 'Faltan datos requeridos'}), 400
+
+        resultado = favoritoServicio.eliminar(idUsuario, idProducto)
+        return jsonify(resultado), 200 if resultado['success'] else 400
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
 

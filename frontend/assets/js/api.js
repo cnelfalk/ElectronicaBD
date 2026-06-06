@@ -1,8 +1,14 @@
 // Colocar la IP de Tailscale o actualizar si se despliega en otro ambiente
 // Se detecta automáticamente si se está probando en localhost o 127.0.0.1
-var API_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:5000/api'
-    : 'http://100.82.23.52:5000/api';
+var API_URL;
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    API_URL = 'http://localhost:5000/api';
+} else if (window.location.hostname === 'proyectomans.servehttp.com') {
+    API_URL = '/techmatch/api';
+} else {
+    API_URL = 'http://100.82.23.52:5000/api';
+}
+
 
 async function apiRequest(endpoint, options = {}) {
     const config = {

@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TechMatch — Detalle de Producto</title>
+    <title>TechMatch — Detalles del Producto</title>
     <meta name="description" content="Visualizá las especificaciones técnicas completas y precios actualizados de este producto en TechMatch.">
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
     <link rel="stylesheet" href="assets/css/style.css">
     <style>
         /* ── Estilos específicos para la vista de detalle ── */

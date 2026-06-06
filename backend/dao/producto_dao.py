@@ -49,7 +49,7 @@ class ProductoDAO:
                 ) fav_count ON p.id_producto = fav_count.id_producto
             """
 
-        query += " WHERE 1=1"
+        query += " WHERE p.es_oculto = FALSE"
         parametrosSql = []
 
         if categoria:
@@ -199,7 +199,7 @@ class ProductoDAO:
                         tiendaRow = cursor.fetchone()
                         if tiendaRow:
                             cursor.execute("""
-                                INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                                INSERT INTO producto_tienda (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
                                 VALUES (%s, %s, %s, %s, NOW())
                                 ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
                             """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
@@ -238,7 +238,7 @@ class ProductoDAO:
                     tiendaRow = cursor.fetchone()
                     if tiendaRow:
                         cursor.execute("""
-                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                            INSERT INTO producto_tienda (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
                             VALUES (%s, %s, %s, %s, NOW())
                         """, (idProductoGenerado, tiendaRow['id_tienda'], precio, urlProducto))
                 else:
@@ -291,6 +291,8 @@ class ProductoDAO:
                             "UPDATE productos SET img_url = %s WHERE id_producto = %s",
                             (imgUrl, idProducto)
                         )
+                    # repararHuerfano - Si el producto existe pero le faltan specs, insertamos valores por defecto
+                    self._repararSpecsSiFaltan(cursor, idProducto, nombreCategoria, modelo)
                     break
 
             if not idProducto:
@@ -315,7 +317,7 @@ class ProductoDAO:
 
                 # Producto nuevo: inserción completa
                 cursor.execute(
-                    "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                    "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria, es_oculto) VALUES (%s, %s, %s, %s, FALSE)",
                     (modelo, imgUrl, idMarca, idCategoria)
                 )
                 idProducto = cursor.lastrowid
@@ -373,7 +375,7 @@ class ProductoDAO:
                     tiendaRow = cursor.fetchone()
                     if tiendaRow:
                         cursor.execute("""
-                            INSERT INTO se_vende_en (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
+                            INSERT INTO producto_tienda (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
                             VALUES (%s, %s, %s, %s, NOW())
                             ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
                         """, (idProducto, tiendaRow['id_tienda'], precio, urlProducto, precio, urlProducto))
@@ -399,7 +401,19 @@ class ProductoDAO:
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
-            if cursor.fetchone():
+            existente = cursor.fetchone()
+            if existente:
+                # verificarSpecs - Si ya existe el producto, asegurar que tenga registro en la tabla cpu
+                idProductoExistente = existente['id_producto']
+                cursor.execute("SELECT id_CPU FROM cpu WHERE id_producto = %s", (idProductoExistente,))
+                if not cursor.fetchone():
+                    # repararHuerfano - Insertamos las specs reales que trae el scraper oficial
+                    cursor.execute("""
+                        INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (idProductoExistente, nucleos, hilos, frecBase, frecTurbo, tdp))
+                    self.conexion.commit()
+                    print(f"// upsertCPU: CPU '{modelo}' (ID: {idProductoExistente}) reparado con specs reales del scraper.")
                 return
 
             nombreMarca = "AMD" if "AMD" in modelo or "Ryzen" in modelo else "Intel"
@@ -416,9 +430,12 @@ class ProductoDAO:
                 return
             idCategoria = categoriaRow['id_categoria']
 
+            import re
+            es_oculto = bool(re.search(r'(U|H|HX|HS|P|G[0-9]|UL|HL|TE|PE|PQE)$', modelo, re.IGNORECASE))
+
             cursor.execute(
-                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
-                (modelo, "", idMarca, idCategoria)
+                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria, es_oculto) VALUES (%s, %s, %s, %s, %s)",
+                (modelo, "", idMarca, idCategoria, es_oculto)
             )
             idProducto = cursor.lastrowid
 
@@ -440,7 +457,18 @@ class ProductoDAO:
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute("SELECT id_producto FROM productos WHERE modelo_producto = %s", (modelo,))
-            if cursor.fetchone():
+            existente = cursor.fetchone()
+            if existente:
+                # verificarSpecs - Si ya existe el producto, asegurar que tenga registro en la tabla gpu
+                idProductoExistente = existente['id_producto']
+                cursor.execute("SELECT id_GPU FROM gpu WHERE id_producto = %s", (idProductoExistente,))
+                if not cursor.fetchone():
+                    cursor.execute("""
+                        INSERT INTO gpu (id_producto, vram, tipo_memoria, consumo_wh)
+                        VALUES (%s, %s, %s, %s)
+                    """, (idProductoExistente, vramGb, tipoMemoria, tdpW))
+                    self.conexion.commit()
+                    print(f"// upsertGPU: GPU '{modelo}' (ID: {idProductoExistente}) reparado con specs reales del scraper.")
                 return
 
             nombreMarca = "NVIDIA" if any(k in modelo for k in ["RTX", "GTX", "GeForce", "NVIDIA"]) else "AMD"
@@ -667,7 +695,7 @@ class ProductoDAO:
                 s.precio, 
                 s.url_producto, 
                 s.fec_actualizacion
-            FROM se_vende_en s
+            FROM producto_tienda s
             JOIN tiendas t ON s.id_tienda = t.id_tienda
             WHERE s.id_producto = %s
             ORDER BY s.precio ASC
@@ -755,3 +783,54 @@ class ProductoDAO:
             return 1
         finally:
             cursor.close()
+
+    # _repararSpecsSiFaltan - Verifica que un producto tenga su registro en la tabla de specs correspondiente.
+    # Si está huérfano (existe en 'productos' pero no en la tabla de specs), inserta valores por defecto.
+    # Esto previene errores al comparar productos que fueron importados sin especificaciones.
+    def _repararSpecsSiFaltan(self, cursor, idProducto, nombreCategoria, modelo):
+        try:
+            if nombreCategoria == 'CPU':
+                cursor.execute("SELECT id_CPU FROM cpu WHERE id_producto = %s", (idProducto,))
+                if not cursor.fetchone():
+                    cursor.execute("""
+                        INSERT INTO cpu (id_producto, nucleos, hilos, frecuencia_base, frecuencia_turbo, tdp)
+                        VALUES (%s, 6, 12, 3.00, 4.50, 65)
+                    """, (idProducto,))
+                    print(f"// repararSpecs: CPU '{modelo}' (ID: {idProducto}) reparado con specs por defecto.")
+
+            elif nombreCategoria == 'GPU':
+                cursor.execute("SELECT id_GPU FROM gpu WHERE id_producto = %s", (idProducto,))
+                if not cursor.fetchone():
+                    specs = extraer_specs_gpu(modelo)
+                    cursor.execute("""
+                        INSERT INTO gpu (id_producto, vram, tipo_memoria, consumo_wh)
+                        VALUES (%s, %s, %s, %s)
+                    """, (idProducto, specs['vram_gb'], specs['tipo_memoria'], specs['tdp_w']))
+                    print(f"// repararSpecs: GPU '{modelo}' (ID: {idProducto}) reparado con specs por defecto.")
+
+            elif nombreCategoria == 'RAM':
+                cursor.execute("SELECT id_RAM FROM ram WHERE id_producto = %s", (idProducto,))
+                if not cursor.fetchone():
+                    specs = extraer_specs_ram(modelo)
+                    tipo_ram = specs['tipo_memoria']
+                    if tipo_ram not in ['DDR3', 'DDR4', 'DDR5']:
+                        tipo_ram = 'DDR4'
+                    cursor.execute("""
+                        INSERT INTO ram (id_producto, capacidad_gb_ram, velocidad_mhz, latencia_cl, tipo_ram)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (idProducto, specs['capacidad_gb'], specs['velocidad_mhz'], specs['latencia'], tipo_ram))
+                    print(f"// repararSpecs: RAM '{modelo}' (ID: {idProducto}) reparado con specs por defecto.")
+
+            elif nombreCategoria == 'Almacenamiento':
+                cursor.execute("SELECT id_almacenamiento FROM almacenamiento WHERE id_producto = %s", (idProducto,))
+                if not cursor.fetchone():
+                    specs = extraer_specs_almacenamiento(modelo)
+                    vel_escritura = int(specs['velocidad_lectura'] * 0.8)
+                    cursor.execute("""
+                        INSERT INTO almacenamiento (id_producto, capacidad_gb_almacenamiento, tipo_almacenamiento, vel_lectura, vel_escritura)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (idProducto, specs['capacidad_gb'], specs['tipo_disco'], specs['velocidad_lectura'], vel_escritura))
+                    print(f"// repararSpecs: Almacenamiento '{modelo}' (ID: {idProducto}) reparado con specs por defecto.")
+
+        except Exception as e:
+            print(f"// errorRepararSpecs: {e} — Producto: {modelo} (ID: {idProducto})")

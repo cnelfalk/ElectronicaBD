@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnGuardarComparacion) {
         btnGuardarComparacion.addEventListener('click', async () => {
             if (!usuario) return;
-            
+
             btnGuardarComparacion.innerHTML = '⏳ Guardando...';
             btnGuardarComparacion.disabled = true;
 
@@ -76,13 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     btnGuardarComparacion.innerHTML = '✅ Guardada en Mis Comparaciones';
                     btnGuardarComparacion.style.opacity = '0.7';
                 } else {
-                    mostrarAlerta(datosJson.mensaje || 'Error al guardar la comparación.');
+                    alert(datosJson.mensaje || 'Error al guardar la comparación.');
                     btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
                     btnGuardarComparacion.disabled = false;
                 }
             } catch (error) {
                 console.error('Error al guardar comparación:', error);
-                mostrarAlerta('No se pudo guardar la comparación. Verificá tu conexión.');
+                alert('No se pudo guardar la comparación. Verificá tu conexión.');
                 btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
                 btnGuardarComparacion.disabled = false;
             }
@@ -97,7 +97,11 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarCargando();
 
         try {
-            const datos = await apiRequest(`/comparar?idA=${idA}&idB=${idB}&perfil=${encodeURIComponent(perfil)}`);
+            let url = `/comparar?idA=${idA}&idB=${idB}&perfil=${encodeURIComponent(perfil)}`;
+            if (usuario) {
+                url += `&idUsuario=${usuario.idUsuario}`;
+            }
+            const datos = await apiRequest(url);
             if (datos.success) {
                 renderizarComparacion(datos);
             } else {
@@ -135,9 +139,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // Mostrar botón de guardar si el usuario está logueado
         if (usuario && btnGuardarComparacion) {
             btnGuardarComparacion.style.display = 'inline-flex';
-            btnGuardarComparacion.disabled = false;
-            btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
-            btnGuardarComparacion.style.opacity = '1';
+            if (data.yaGuardada) {
+                btnGuardarComparacion.disabled = true;
+                btnGuardarComparacion.innerHTML = '✅ Guardada en Mis Comparaciones';
+                btnGuardarComparacion.style.opacity = '0.7';
+            } else {
+                btnGuardarComparacion.disabled = false;
+                btnGuardarComparacion.innerHTML = '💾 Guardar Comparación';
+                btnGuardarComparacion.style.opacity = '1';
+            }
         }
 
         // 2. Cabeceras de tabla y títulos
@@ -153,42 +163,42 @@ document.addEventListener('DOMContentLoaded', () => {
         let specs = [];
         if (categoria === 'Laptop') {
             specs = [
-                { label: 'Procesador (CPU)',    valA: data.datosA.cpu_modelo,   valB: data.datosB.cpu_modelo,   rawA: data.datosA.cpu_score,         rawB: data.datosB.cpu_score,         highlight: true },
-                { label: 'Placa de Video (GPU)',valA: data.datosA.gpu_modelo,   valB: data.datosB.gpu_modelo,   highlight: false },
-                { label: 'Memoria RAM',         valA: `${data.datosA.ram_gb} GB`,           valB: `${data.datosB.ram_gb} GB`,           rawA: data.datosA.ram_gb,            rawB: data.datosB.ram_gb,            highlight: true },
-                { label: 'Almacenamiento',      valA: `${data.datosA.almacenamiento_gb} GB`, valB: `${data.datosB.almacenamiento_gb} GB`, rawA: data.datosA.almacenamiento_gb, rawB: data.datosB.almacenamiento_gb, highlight: true },
-                { label: 'Pantalla',            valA: `${data.datosA.tamanio_pantalla}" (${data.datosA.tasa_refresco_hz}Hz)`, valB: `${data.datosB.tamanio_pantalla}" (${data.datosB.tasa_refresco_hz}Hz)`, rawA: data.datosA.tasa_refresco_hz, rawB: data.datosB.tasa_refresco_hz, highlight: true },
-                { label: 'Capacidad de Batería',valA: `${data.datosA.capacidad_bateria_wh} Wh`, valB: `${data.datosB.capacidad_bateria_wh} Wh`, rawA: data.datosA.capacidad_bateria_wh, rawB: data.datosB.capacidad_bateria_wh, highlight: true },
-                { label: 'Peso',                valA: `${data.datosA.peso_kg} kg`, valB: `${data.datosB.peso_kg} kg`, rawA: data.datosA.peso_kg, rawB: data.datosB.peso_kg, highlight: true, menorEsMejor: true }
+                { label: 'Procesador (CPU)', valA: data.datosA.cpu_modelo, valB: data.datosB.cpu_modelo, rawA: data.datosA.cpu_score, rawB: data.datosB.cpu_score, highlight: true },
+                { label: 'Placa de Video (GPU)', valA: data.datosA.gpu_modelo, valB: data.datosB.gpu_modelo, highlight: false },
+                { label: 'Memoria RAM', valA: `${data.datosA.ram_gb} GB`, valB: `${data.datosB.ram_gb} GB`, rawA: data.datosA.ram_gb, rawB: data.datosB.ram_gb, highlight: true },
+                { label: 'Almacenamiento', valA: `${data.datosA.almacenamiento_gb} GB`, valB: `${data.datosB.almacenamiento_gb} GB`, rawA: data.datosA.almacenamiento_gb, rawB: data.datosB.almacenamiento_gb, highlight: true },
+                { label: 'Pantalla', valA: `${data.datosA.tamanio_pantalla}" (${data.datosA.tasa_refresco_hz}Hz)`, valB: `${data.datosB.tamanio_pantalla}" (${data.datosB.tasa_refresco_hz}Hz)`, rawA: data.datosA.tasa_refresco_hz, rawB: data.datosB.tasa_refresco_hz, highlight: true },
+                { label: 'Capacidad de Batería', valA: `${data.datosA.capacidad_bateria_wh} Wh`, valB: `${data.datosB.capacidad_bateria_wh} Wh`, rawA: data.datosA.capacidad_bateria_wh, rawB: data.datosB.capacidad_bateria_wh, highlight: true },
+                { label: 'Peso', valA: `${data.datosA.peso_kg} kg`, valB: `${data.datosB.peso_kg} kg`, rawA: data.datosA.peso_kg, rawB: data.datosB.peso_kg, highlight: true, menorEsMejor: true }
             ];
         } else if (categoria === 'CPU') {
             specs = [
-                { label: 'Núcleos',             valA: data.datosA.nucleos,         valB: data.datosB.nucleos,         rawA: data.datosA.nucleos,         rawB: data.datosB.nucleos,         highlight: true },
-                { label: 'Hilos',               valA: data.datosA.hilos,           valB: data.datosB.hilos,           rawA: data.datosA.hilos,           rawB: data.datosB.hilos,           highlight: true },
-                { label: 'Frecuencia Base',     valA: `${data.datosA.frecuencia_base} GHz`,  valB: `${data.datosB.frecuencia_base} GHz`,  rawA: data.datosA.frecuencia_base,  rawB: data.datosB.frecuencia_base,  highlight: true },
-                { label: 'Frecuencia Turbo',    valA: `${data.datosA.frecuencia_turbo} GHz`, valB: `${data.datosB.frecuencia_turbo} GHz`, rawA: data.datosA.frecuencia_turbo, rawB: data.datosB.frecuencia_turbo, highlight: true },
-                { label: 'TDP (Consumo/Calor)', valA: `${data.datosA.tdp} W`,      valB: `${data.datosB.tdp} W`,      rawA: data.datosA.tdp,             rawB: data.datosB.tdp,             highlight: true, menorEsMejor: true }
+                { label: 'Núcleos', valA: data.datosA.nucleos, valB: data.datosB.nucleos, rawA: data.datosA.nucleos, rawB: data.datosB.nucleos, highlight: true },
+                { label: 'Hilos', valA: data.datosA.hilos, valB: data.datosB.hilos, rawA: data.datosA.hilos, rawB: data.datosB.hilos, highlight: true },
+                { label: 'Frecuencia Base', valA: `${data.datosA.frecuencia_base} GHz`, valB: `${data.datosB.frecuencia_base} GHz`, rawA: data.datosA.frecuencia_base, rawB: data.datosB.frecuencia_base, highlight: true },
+                { label: 'Frecuencia Turbo', valA: `${data.datosA.frecuencia_turbo} GHz`, valB: `${data.datosB.frecuencia_turbo} GHz`, rawA: data.datosA.frecuencia_turbo, rawB: data.datosB.frecuencia_turbo, highlight: true },
+                { label: 'TDP (Consumo/Calor)', valA: `${data.datosA.tdp} W`, valB: `${data.datosB.tdp} W`, rawA: data.datosA.tdp, rawB: data.datosB.tdp, highlight: true, menorEsMejor: true }
             ];
         } else if (categoria === 'GPU') {
             specs = [
-                { label: 'VRAM',            valA: `${data.datosA.vram_gb} GB`,  valB: `${data.datosB.vram_gb} GB`,  rawA: data.datosA.vram_gb,    rawB: data.datosB.vram_gb,    highlight: true },
-                { label: 'Tipo de Memoria', valA: data.datosA.tipo_memoria,     valB: data.datosB.tipo_memoria,     highlight: false },
-                { label: 'Bus de Memoria',  valA: data.datosA.bus_bits ? `${data.datosA.bus_bits} bits` : '-', valB: data.datosB.bus_bits ? `${data.datosB.bus_bits} bits` : '-', rawA: data.datosA.bus_bits, rawB: data.datosB.bus_bits, highlight: true },
-                { label: 'TDP',             valA: `${data.datosA.tdp_w} W`,     valB: `${data.datosB.tdp_w} W`,     rawA: data.datosA.tdp_w,      rawB: data.datosB.tdp_w,      highlight: true, menorEsMejor: true }
+                { label: 'VRAM', valA: `${data.datosA.vram_gb} GB`, valB: `${data.datosB.vram_gb} GB`, rawA: data.datosA.vram_gb, rawB: data.datosB.vram_gb, highlight: true },
+                { label: 'Tipo de Memoria', valA: data.datosA.tipo_memoria, valB: data.datosB.tipo_memoria, highlight: false },
+                { label: 'Bus de Memoria', valA: data.datosA.bus_bits ? `${data.datosA.bus_bits} bits` : '-', valB: data.datosB.bus_bits ? `${data.datosB.bus_bits} bits` : '-', rawA: data.datosA.bus_bits, rawB: data.datosB.bus_bits, highlight: true },
+                { label: 'TDP', valA: `${data.datosA.tdp_w} W`, valB: `${data.datosB.tdp_w} W`, rawA: data.datosA.tdp_w, rawB: data.datosB.tdp_w, highlight: true, menorEsMejor: true }
             ];
         } else if (categoria === 'RAM') {
             specs = [
-                { label: 'Capacidad',     valA: `${data.datosA.capacidad_gb} GB`,    valB: `${data.datosB.capacidad_gb} GB`,    rawA: data.datosA.capacidad_gb,  rawB: data.datosB.capacidad_gb,  highlight: true },
-                { label: 'Tipo',          valA: data.datosA.tipo_memoria,             valB: data.datosB.tipo_memoria,             highlight: false },
-                { label: 'Velocidad',     valA: `${data.datosA.velocidad_mhz} MHz`,   valB: `${data.datosB.velocidad_mhz} MHz`,   rawA: data.datosA.velocidad_mhz, rawB: data.datosB.velocidad_mhz, highlight: true },
-                { label: 'Módulos',       valA: data.datosA.cantidad_modulos || '-',  valB: data.datosB.cantidad_modulos || '-',  highlight: false },
-                { label: 'Latencia CAS',  valA: data.datosA.latencia ? `CL${data.datosA.latencia}` : '-', valB: data.datosB.latencia ? `CL${data.datosB.latencia}` : '-', rawA: data.datosA.latencia, rawB: data.datosB.latencia, highlight: true, menorEsMejor: true }
+                { label: 'Capacidad', valA: `${data.datosA.capacidad_gb} GB`, valB: `${data.datosB.capacidad_gb} GB`, rawA: data.datosA.capacidad_gb, rawB: data.datosB.capacidad_gb, highlight: true },
+                { label: 'Tipo', valA: data.datosA.tipo_memoria, valB: data.datosB.tipo_memoria, highlight: false },
+                { label: 'Velocidad', valA: `${data.datosA.velocidad_mhz} MHz`, valB: `${data.datosB.velocidad_mhz} MHz`, rawA: data.datosA.velocidad_mhz, rawB: data.datosB.velocidad_mhz, highlight: true },
+                { label: 'Módulos', valA: data.datosA.cantidad_modulos || '-', valB: data.datosB.cantidad_modulos || '-', highlight: false },
+                { label: 'Latencia CAS', valA: data.datosA.latencia ? `CL${data.datosA.latencia}` : '-', valB: data.datosB.latencia ? `CL${data.datosB.latencia}` : '-', rawA: data.datosA.latencia, rawB: data.datosB.latencia, highlight: true, menorEsMejor: true }
             ];
         } else if (categoria === 'Almacenamiento') {
             specs = [
-                { label: 'Capacidad',         valA: `${data.datosA.capacidad_gb} GB`,       valB: `${data.datosB.capacidad_gb} GB`,       rawA: data.datosA.capacidad_gb,      rawB: data.datosB.capacidad_gb,      highlight: true },
-                { label: 'Tipo',              valA: data.datosA.tipo_disco,                  valB: data.datosB.tipo_disco,                  highlight: false },
-                { label: 'Interfaz',          valA: data.datosA.interfaz || '-',             valB: data.datosB.interfaz || '-',             highlight: false },
+                { label: 'Capacidad', valA: `${data.datosA.capacidad_gb} GB`, valB: `${data.datosB.capacidad_gb} GB`, rawA: data.datosA.capacidad_gb, rawB: data.datosB.capacidad_gb, highlight: true },
+                { label: 'Tipo', valA: data.datosA.tipo_disco, valB: data.datosB.tipo_disco, highlight: false },
+                { label: 'Interfaz', valA: data.datosA.interfaz || '-', valB: data.datosB.interfaz || '-', highlight: false },
                 { label: 'Velocidad Lectura', valA: `${data.datosA.velocidad_lectura} MB/s`, valB: `${data.datosB.velocidad_lectura} MB/s`, rawA: data.datosA.velocidad_lectura, rawB: data.datosB.velocidad_lectura, highlight: true }
             ];
         }
@@ -258,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span style="font-size: 0.7rem; color: var(--tm-text-muted);">Act: ${new Date(p.fec_actualizacion).toLocaleDateString('es-AR')}</span>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <span class="tm-store-price">$${parseFloat(p.precio).toLocaleString('es-AR', {minimumFractionDigits: 0, maximumFractionDigits: 0})}</span>
+                        <span class="tm-store-price">$${parseFloat(p.precio).toLocaleString('es-AR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
                         <a href="${p.url_producto}" target="_blank" class="tm-btn tm-btn-primary tm-btn-sm tm-store-link">Ver Oferta</a>
                     </div>
                 </div>

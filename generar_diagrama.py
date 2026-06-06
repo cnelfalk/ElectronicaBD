@@ -33,6 +33,7 @@ rectangle "TechMatch (Sistema de Comparación de Hardware)" {
     usecase "Ver ficha de producto\\ny ofertas de precios" as UC3
     usecase "Comparar productos\\n(Veredicto por perfil)" as UC4
     usecase "Registrarse / Iniciar Sesión" as UC5
+    usecase "Recuperar contraseña" as UC5_1
     
     usecase "Gestionar favoritos\\n(Agregar / Quitar)" as UC6
     usecase "Ver lista de favoritos" as UC7
@@ -52,6 +53,7 @@ Guest --> UC2
 Guest --> UC3
 Guest --> UC4
 Guest --> UC5
+Guest --> UC5_1
 
 User --> UC6
 User --> UC7
@@ -68,7 +70,6 @@ UC10 ..> UC11 : <<include>>
 @enduml
 """
 
-# Definición del Diagrama en Mermaid
 MERMAID_DIAGRAM = """flowchart TD
     %% Actors
     Visitante["👤 Visitante (Anónimo)"]
@@ -85,6 +86,7 @@ MERMAID_DIAGRAM = """flowchart TD
         UC3(["Ver ficha técnica de producto\\ny ofertas de precios"])
         UC4(["Comparar productos side-by-side\\n(con veredicto)"])
         UC5(["Registrarse / Iniciar Sesión"])
+        UC5_1(["Recuperar contraseña"])
 
         %% Use Cases for Registered
         UC6(["Gestionar favoritos\\n(Agregar o Quitar)"])
@@ -107,6 +109,7 @@ MERMAID_DIAGRAM = """flowchart TD
     Visitante --> UC3
     Visitante --> UC4
     Visitante --> UC5
+    Visitante --> UC5_1
 
     Usuario --> UC6
     Usuario --> UC7

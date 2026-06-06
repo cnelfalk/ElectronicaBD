@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAplicarFiltros   = document.getElementById('btnAplicarFiltros');
     const filtroMarca         = document.getElementById('filtroMarca');
     const filtroCategoria     = document.getElementById('filtroCategoria');
-    const filtroPerfil        = document.getElementById('filtroPerfil');
     const buscarNombre        = document.getElementById('buscarNombre');
 
     // Carga las marcas desde la API y puebla el select dinámicamente
@@ -38,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const params = new URLSearchParams();
         if (filtroMarca.value)     params.append('marca',     filtroMarca.value);
         if (filtroCategoria.value) params.append('categoria', filtroCategoria.value);
-        if (filtroPerfil.value)    params.append('perfil',    filtroPerfil.value);
         if (buscarNombre.value)    params.append('busqueda',  buscarNombre.value);
 
         const urlConFiltros = `${API_URL}/productos?${params.toString()}`;

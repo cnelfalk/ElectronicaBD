@@ -94,9 +94,30 @@ CREATE TABLE IF NOT EXISTS `techmatch`.`usuarios` (
   `fec_registro` DATETIME NULL DEFAULT NULL,
   `email_usuario` VARCHAR(150) NULL DEFAULT NULL,
   PRIMARY KEY (`id_usuario`),
-  UNIQUE INDEX `email_usuario_UNIQUE` (`email_usuario` ASC) VISIBLE)
+  UNIQUE INDEX `email_usuario_UNIQUE` (`email_usuario` ASC) VISIBLE,
+  UNIQUE INDEX `nombre_usuario_UNIQUE` (`nombre_usuario` ASC) VISIBLE)
 ENGINE = InnoDB
 AUTO_INCREMENT = 4
+DEFAULT CHARACTER SET = utf8mb3;
+
+
+-- -----------------------------------------------------
+-- Table `techmatch`.`codigos_recuperacion`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `techmatch`.`codigos_recuperacion` (
+  `id_codigo`      INT          NOT NULL AUTO_INCREMENT,
+  `id_usuario`     INT          NOT NULL,
+  `codigo`         VARCHAR(6)   NOT NULL,
+  `fec_expiracion` DATETIME     NOT NULL,
+  `token`          VARCHAR(64)  NULL DEFAULT NULL,
+  `usado`          TINYINT(1)   NOT NULL DEFAULT 0,
+  PRIMARY KEY (`id_codigo`),
+  INDEX `fk_codigos_recuperacion_usuarios_idx` (`id_usuario` ASC) VISIBLE,
+  CONSTRAINT `fk_codigos_recuperacion_usuarios`
+    FOREIGN KEY (`id_usuario`)
+    REFERENCES `techmatch`.`usuarios` (`id_usuario`)
+    ON DELETE CASCADE)
+ENGINE = InnoDB
 DEFAULT CHARACTER SET = utf8mb3;
 
 
@@ -122,9 +143,9 @@ DEFAULT CHARACTER SET = utf8mb3;
 
 
 -- -----------------------------------------------------
--- Table `techmatch`.`contiene`
+-- Table `techmatch`.`producto_comparacion`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `techmatch`.`contiene` (
+CREATE TABLE IF NOT EXISTS `techmatch`.`producto_comparacion` (
   `id_producto` INT NOT NULL,
   `id_comparacion` INT NOT NULL,
   PRIMARY KEY (`id_producto`, `id_comparacion`),
@@ -288,9 +309,9 @@ DEFAULT CHARACTER SET = utf8mb3;
 
 
 -- -----------------------------------------------------
--- Table `techmatch`.`se_vende_en`
+-- Table `techmatch`.`producto_tienda`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `techmatch`.`se_vende_en` (
+CREATE TABLE IF NOT EXISTS `techmatch`.`producto_tienda` (
   `id_producto` INT NOT NULL,
   `id_tienda` INT NOT NULL,
   `precio` DECIMAL(12,2) NULL DEFAULT NULL,
@@ -321,7 +342,7 @@ CREATE PROCEDURE `sp_eliminar_comparacion`(
 )
 BEGIN
     -- 1. Borrar el detalle (tabla hija) para respetar la clave foránea
-    DELETE FROM contiene WHERE id_comparacion = p_id_comparacion;
+    DELETE FROM producto_comparacion WHERE id_comparacion = p_id_comparacion;
 
     -- 2. Borrar la cabecera
     DELETE FROM comparaciones_guardadas WHERE id_comparacion = p_id_comparacion;
@@ -346,10 +367,10 @@ BEGIN
     SET v_id_comparacion = LAST_INSERT_ID();
 
     -- 3. Insertar los dos productos en la tabla de detalle
-    INSERT IGNORE INTO contiene (id_producto, id_comparacion)
+    INSERT IGNORE INTO producto_comparacion (id_producto, id_comparacion)
     VALUES (p_id_producto_a, v_id_comparacion);
 
-    INSERT IGNORE INTO contiene (id_producto, id_comparacion)
+    INSERT IGNORE INTO producto_comparacion (id_producto, id_comparacion)
     VALUES (p_id_producto_b, v_id_comparacion);
 
     -- 4. Devolver el ID generado para confirmación
@@ -377,7 +398,7 @@ SELECT
 FROM productos p
 JOIN  categorias    c ON p.id_categoria = c.id_categoria
 JOIN  marcas        m ON p.id_marca     = m.id_marca
-LEFT JOIN se_vende_en s ON p.id_producto = s.id_producto
+LEFT JOIN producto_tienda s ON p.id_producto = s.id_producto
 GROUP BY
     p.id_producto, p.modelo_producto, p.img_url,
     c.nombre_categoria, m.nombre_marca;
@@ -390,10 +411,10 @@ GROUP BY
 DELIMITER $$
 
 -- Valida que los productos de una comparación sean de la misma categoría.
--- Se dispara BEFORE INSERT en contiene, antes de confirmar el segundo producto.
+-- Se dispara BEFORE INSERT en producto_comparacion, antes de confirmar el segundo producto.
 DROP TRIGGER IF EXISTS `trg_validar_categoria_comparacion`$$
 CREATE TRIGGER `trg_validar_categoria_comparacion`
-BEFORE INSERT ON `contiene`
+BEFORE INSERT ON `producto_comparacion`
 FOR EACH ROW
 BEGIN
     DECLARE v_categoria_nuevo     INT;
@@ -402,7 +423,7 @@ BEGIN
 
     -- Ver si ya hay al menos un producto en esta comparación
     SELECT COUNT(*) INTO v_count
-    FROM contiene
+    FROM producto_comparacion
     WHERE id_comparacion = NEW.id_comparacion;
 
     IF v_count > 0 THEN
@@ -413,7 +434,7 @@ BEGIN
 
         -- Categoría del producto ya existente en la comparación
         SELECT p.id_categoria INTO v_categoria_existente
-        FROM contiene c
+        FROM producto_comparacion c
         JOIN productos p ON c.id_producto = p.id_producto
         WHERE c.id_comparacion = NEW.id_comparacion
         LIMIT 1;
@@ -430,7 +451,7 @@ DELIMITER ;
 
 -- -----------------------------------------------------
 -- Datos iniciales: Tiendas conocidas
--- (requerido para que los scrapers guarden precios en se_vende_en)
+-- (requerido para que los scrapers guarden precios en producto_tienda)
 -- -----------------------------------------------------
 INSERT IGNORE INTO `techmatch`.`tiendas` (`nombre_tienda`, `url_tienda`) VALUES
 ('Mercado Libre',  'https://www.mercadolibre.com.ar'),

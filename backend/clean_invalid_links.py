@@ -33,7 +33,7 @@ def main():
     try:
         cursor.execute("""
             SELECT s.id_producto, s.id_tienda, p.modelo_producto, t.nombre_tienda, s.url_producto 
-            FROM se_vende_en s
+            FROM producto_tienda s
             JOIN productos p ON s.id_producto = p.id_producto
             JOIN tiendas t ON s.id_tienda = t.id_tienda
         """)
@@ -51,7 +51,7 @@ def main():
             if not validar_url_retail(url, tienda):
                 print(f"Eliminando enlace invalido: [{tienda}] {modelo[:40]} | URL: {url}")
                 cursor.execute("""
-                    DELETE FROM se_vende_en 
+                    DELETE FROM producto_tienda 
                     WHERE id_producto = %s AND id_tienda = %s
                 """, (id_prod, id_tienda))
                 eliminados += 1

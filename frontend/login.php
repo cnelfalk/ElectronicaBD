@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TechMatch — Iniciar Sesión</title>
     <meta name="description" content="Iniciá sesión en TechMatch para guardar favoritos y comparaciones.">
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -20,17 +21,33 @@
 
             <form id="form-login">
                 <div class="tm-form-group">
-                    <label for="email">Correo electrónico</label>
-                    <input type="email" class="tm-input" id="email" placeholder="tu@email.com" required>
+                    <label for="identificador">Correo electrónico o Usuario</label>
+                    <input type="text" class="tm-input" id="identificador" placeholder="tu@email.com o nombre de usuario" required>
                 </div>
                 <div class="tm-form-group">
                     <label for="contrasenia">Contraseña</label>
-                    <input type="password" class="tm-input" id="contrasenia" placeholder="Tu contraseña" required>
+                    <div class="tm-password-wrapper">
+                        <input type="password" class="tm-input" id="contrasenia" placeholder="Tu contraseña" required>
+                        <button type="button" class="tm-password-toggle" onclick="togglePasswordVisibility('contrasenia', this)" aria-label="Mostrar/ocultar contraseña">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line class="eye-slash" x1="3" y1="3" x2="21" y2="21"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="tm-btn tm-btn-primary tm-btn-w-full tm-btn-lg" id="btn-submit">
                     Ingresar
                 </button>
             </form>
+
+            <p style="text-align: center; margin-top: 1rem;">
+                <a href="recuperar.php" style="font-size: 0.85rem; color: var(--tm-text-muted); transition: color 0.2s;"
+                   onmouseover="this.style.color='var(--tm-accent)'" onmouseout="this.style.color='var(--tm-text-muted)'">
+                    ¿Olvidaste tu contraseña?
+                </a>
+            </p>
 
             <hr class="tm-divider">
             <p class="tm-auth-footer">
@@ -58,7 +75,8 @@
             btnSubmit.textContent = 'Ingresando...';
             alertaError.classList.remove('visible');
 
-            const email = document.getElementById('email').value.trim();
+            // CAMBIO: Capturamos el nuevo ID 'identificador'
+            const identificador = document.getElementById('identificador').value.trim();
             const contrasenia = document.getElementById('contrasenia').value;
 
             try {
@@ -66,7 +84,8 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        emailUsuario: email,
+                        // CAMBIO: Enviamos la propiedad 'identificador' al backend en lugar de 'emailUsuario'
+                        identificador: identificador,
                         contraseniaUsuario: contrasenia
                     })
                 });

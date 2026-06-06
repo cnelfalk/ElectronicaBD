@@ -164,7 +164,8 @@ class ComparacionServicio:
         cpuB = self.productoDao.obtenerCPUPorId(idProductoB)
 
         if not cpuA or not cpuB:
-            return {"success": False, "mensaje": "Uno de los productos no existe o no es una CPU."}
+            faltante = idProductoA if not cpuA else idProductoB
+            return {"success": False, "mensaje": f"El producto (ID: {faltante}) está registrado como CPU pero no tiene especificaciones técnicas cargadas. Esto puede ocurrir con productos importados de retailers. Contactá al administrador."}
 
         preciosA = self.productoDao.obtenerPreciosProducto(idProductoA)
         preciosB = self.productoDao.obtenerPreciosProducto(idProductoB)
@@ -245,7 +246,8 @@ class ComparacionServicio:
         gpuB = self.productoDao.obtenerGPUPorId(idProductoB)
 
         if not gpuA or not gpuB:
-            return {"success": False, "mensaje": "Uno de los productos no existe o no es una GPU."}
+            faltante = idProductoA if not gpuA else idProductoB
+            return {"success": False, "mensaje": f"El producto (ID: {faltante}) está registrado como GPU pero no tiene especificaciones técnicas cargadas. Contactá al administrador."}
 
         preciosA = self.productoDao.obtenerPreciosProducto(idProductoA)
         preciosB = self.productoDao.obtenerPreciosProducto(idProductoB)
@@ -322,7 +324,8 @@ class ComparacionServicio:
         ramB = self.productoDao.obtenerRAMPorId(idProductoB)
 
         if not ramA or not ramB:
-            return {"success": False, "mensaje": "Uno de los productos no existe o no es RAM."}
+            faltante = idProductoA if not ramA else idProductoB
+            return {"success": False, "mensaje": f"El producto (ID: {faltante}) está registrado como RAM pero no tiene especificaciones técnicas cargadas. Contactá al administrador."}
 
         preciosA = self.productoDao.obtenerPreciosProducto(idProductoA)
         preciosB = self.productoDao.obtenerPreciosProducto(idProductoB)
@@ -403,7 +406,8 @@ class ComparacionServicio:
         almB = self.productoDao.obtenerAlmacenamientoPorId(idProductoB)
 
         if not almA or not almB:
-            return {"success": False, "mensaje": "Uno de los productos no existe o no es un dispositivo de almacenamiento."}
+            faltante = idProductoA if not almA else idProductoB
+            return {"success": False, "mensaje": f"El producto (ID: {faltante}) está registrado como Almacenamiento pero no tiene especificaciones técnicas cargadas. Contactá al administrador."}
 
         preciosA = self.productoDao.obtenerPreciosProducto(idProductoA)
         preciosB = self.productoDao.obtenerPreciosProducto(idProductoB)
@@ -481,15 +485,14 @@ class ComparacionServicio:
         recomendacion['datosB'] = recomendacion['datosB'].to_dict() if hasattr(recomendacion['datosB'], 'to_dict') else recomendacion['datosB']
         return recomendacion
 
-    # guardarComparacion - Persiste una comparación entre dos productos, rechazando duplicados.
     def guardarComparacion(self, idUsuario, idProductoA, idProductoB, idCategoria=1):
         try:
             if self.comparacionDao.existeComparacion(idUsuario, idProductoA, idProductoB):
                 return {"success": False, "duplicado": True, "mensaje": "Ya tenés esta comparación guardada."}
-            ok = self.comparacionDao.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
+            ok, err_msg = self.comparacionDao.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
             if ok:
                 return {"success": True, "mensaje": "Comparación guardada exitosamente."}
-            return {"success": False, "duplicado": False, "mensaje": "Error al guardar la comparación en la base de datos."}
+            return {"success": False, "duplicado": False, "mensaje": f"Error al guardar la comparación en la base de datos: {err_msg}"}
         except Exception as e:
             print(f"// errorGuardarComparacionServicio: {e}")
             return {"success": False, "duplicado": False, "mensaje": str(e)}

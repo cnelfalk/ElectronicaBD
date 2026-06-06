@@ -71,10 +71,21 @@ if __name__ == "__main__":
     ejecutarBot("Compra Gamer — AMD GPUs",       CompraGamerScraper("AMD",    "GPU"))
 
     # --- RAM ---
-    ejecutarBot("Compra Gamer — RAM",            CompraGamerScraper("Kingston", "RAM"))
+    ejecutarBot("MercadoLibre — RAM Kingston",   MercadoLibreScraper("Kingston", "RAM"))
+    ejecutarBot("Compra Gamer — RAM Kingston",   CompraGamerScraper("Kingston", "RAM"))
+    ejecutarBot("Compra Gamer — RAM Corsair",    CompraGamerScraper("Corsair", "RAM"))
+    ejecutarBot("Compra Gamer — RAM Adata",      CompraGamerScraper("Adata", "RAM"))
+    ejecutarBot("Compra Gamer — RAM Crucial",    CompraGamerScraper("Crucial", "RAM"))
+    ejecutarBot("Compra Gamer — RAM Team",       CompraGamerScraper("Team", "RAM"))
+    ejecutarBot("Compra Gamer — RAM GSkill",     CompraGamerScraper("GSkill", "RAM"))
+    ejecutarBot("Compra Gamer — RAM Patriot",    CompraGamerScraper("Patriot", "RAM"))
 
     # --- Almacenamiento ---
-    ejecutarBot("Compra Gamer — Almacenamiento", CompraGamerScraper("Kingston", "Almacenamiento"))
+    ejecutarBot("Compra Gamer — Almacenamiento Kingston", CompraGamerScraper("Kingston", "Almacenamiento"))
+    ejecutarBot("Compra Gamer — Almacenamiento WD",       CompraGamerScraper("Western Digital", "Almacenamiento"))
+    ejecutarBot("Compra Gamer — Almacenamiento Adata",    CompraGamerScraper("Adata", "Almacenamiento"))
+    ejecutarBot("Compra Gamer — Almacenamiento Crucial",  CompraGamerScraper("Crucial", "Almacenamiento"))
+    ejecutarBot("Compra Gamer — Almacenamiento Team",     CompraGamerScraper("Team", "Almacenamiento"))
 
     # ── PASO 4: Buscar imágenes faltantes (se ejecuta al final) ─
     print("\n  >>> FASE 4: Buscando imágenes faltantes en MercadoLibre...")

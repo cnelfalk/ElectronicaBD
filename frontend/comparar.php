@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TechMatch — Comparar Hardware</title>
     <meta name="description" content="Comparación técnica detallada y recomendación inteligente de hardware según perfiles de uso.">
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -14,8 +15,8 @@
     <section class="tm-container" style="padding-top: 3rem; padding-bottom: 4rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 2rem;">
             <div>
-                <h1 style="margin: 0; font-size: 2.2rem; font-weight: 800;">Comparación de Hardware</h1>
-                <p style="margin: 0.25rem 0 0; color: var(--tm-text-secondary);">Análisis detallado de características y compatibilidad de perfiles de uso.</p>
+                <h1 class="tm-page-title">Comparación de Hardware</h1>
+                <p class="tm-page-subtitle" style="margin: 0.25rem 0 0;">Análisis detallado de características y compatibilidad de perfiles de uso.</p>
             </div>
             
             <div style="display: flex; align-items: center; gap: 0.75rem;">

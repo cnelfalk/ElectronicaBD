@@ -9,7 +9,7 @@ if conn is None:
 else:
     print("Connection successful!")
     cursor = conn.cursor()
-    tables = ['marcas', 'categorias', 'tiendas', 'socket', 'productos', 'cpu', 'gpu', 'laptops', 'se_vende_en']
+    tables = ['marcas', 'categorias', 'tiendas', 'socket', 'productos', 'cpu', 'gpu', 'laptops', 'producto_tienda']
     for t in tables:
         try:
             cursor.execute(f"SELECT COUNT(*) FROM {t}")

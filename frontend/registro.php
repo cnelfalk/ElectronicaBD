@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TechMatch — Crear Cuenta</title>
     <meta name="description" content="Creá tu cuenta en TechMatch para guardar favoritos y comparar hardware.">
+    <link rel="icon" type="image/svg+xml" href="assets/img/favicon.svg">
     <link rel="stylesheet" href="assets/css/style.css">
 </head>
 <body>
@@ -22,19 +23,37 @@
             <form id="form-registro">
                 <div class="tm-form-group">
                     <label for="nombre">Nombre de usuario</label>
-                    <input type="text" class="tm-input" id="nombre" placeholder="Tu nombre" required>
+                    <input type="text" class="tm-input" id="nombre" placeholder="Tu nombre" required maxlength="30">
                 </div>
                 <div class="tm-form-group">
                     <label for="email">Correo electrónico</label>
-                    <input type="email" class="tm-input" id="email" placeholder="tu@email.com" required>
+                    <input type="email" class="tm-input" id="email" placeholder="tu@email.com" required maxlength="150">
                 </div>
                 <div class="tm-form-group">
                     <label for="contrasenia">Contraseña</label>
-                    <input type="password" class="tm-input" id="contrasenia" placeholder="Mínimo 6 caracteres" required minlength="6">
+                    <div class="tm-password-wrapper">
+                        <input type="password" class="tm-input" id="contrasenia" placeholder="Mínimo 6 caracteres" required minlength="6" maxlength="255">
+                        <button type="button" class="tm-password-toggle" onclick="togglePasswordVisibility('contrasenia', this)" aria-label="Mostrar/ocultar contraseña">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line class="eye-slash" x1="3" y1="3" x2="21" y2="21"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <div class="tm-form-group">
                     <label for="confirmar">Confirmar contraseña</label>
-                    <input type="password" class="tm-input" id="confirmar" placeholder="Repetí la contraseña" required>
+                    <div class="tm-password-wrapper">
+                        <input type="password" class="tm-input" id="confirmar" placeholder="Repetí la contraseña" required maxlength="255">
+                        <button type="button" class="tm-password-toggle" onclick="togglePasswordVisibility('confirmar', this)" aria-label="Mostrar/ocultar contraseña">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                                <line class="eye-slash" x1="3" y1="3" x2="21" y2="21"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="tm-btn tm-btn-primary tm-btn-w-full tm-btn-lg" id="btn-submit">
                     Crear cuenta
@@ -77,6 +96,8 @@
                 alertaError.classList.add('visible');
                 return;
             }
+
+
 
             btnSubmit.disabled = true;
             btnSubmit.textContent = 'Creando cuenta...';
