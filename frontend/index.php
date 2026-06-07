@@ -97,6 +97,10 @@
         <a href="https://listado.mercadolibre.com.ar/computacion/" target="_blank" rel="noopener noreferrer">
             <img src="assets/img/mercadolibre-whitelg.png" alt="MercadoLibre" class="lp-brand-logo">
         </a>
+
+        <a href="https://www.compragamer.com/" target="_blank" rel="noopener noreferrer">
+            <img src="assets/img/compragamer-whitelg.png" alt="CompraGamer" class="lp-brand-logo">
+        </a>
     </div>
 </div>
 
