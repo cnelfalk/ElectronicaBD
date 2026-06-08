@@ -87,6 +87,30 @@ class MercadoLibreScraper(ScraperBase):
                             print(f"  [ML] Filtrado (probablemente repuesto): {modelo[:60]}")
                             continue
 
+                    if self.categoria == "CPU":
+                        if any(kw in modelo_lower for kw in ['notebook', 'laptop', 'consola', 'pc armada', 'monitor', 'mother', 'placa madre']):
+                            print(f"  [ML] Filtrado (no es CPU): {modelo[:60]}")
+                            continue
+                        if not any(kw in modelo_lower for kw in ['procesador', 'ryzen', 'core i', 'intel core', 'athlon', 'threadripper', 'celeron', 'xeon']):
+                            print(f"  [ML] Filtrado (sin keyword de CPU): {modelo[:60]}")
+                            continue
+
+                    if self.categoria == "RAM":
+                        if any(kw in modelo_lower for kw in ['pendrive', 'flash drive', 'datatraveler', 'micro sd', 'microsd', 'sd card', 'notebook', 'laptop']):
+                            print(f"  [ML] Filtrado (no es RAM): {modelo[:60]}")
+                            continue
+                        if not any(kw in modelo_lower for kw in ['ddr4', 'ddr5', 'ddr3', 'memoria ram', 'ram ']):
+                            print(f"  [ML] Filtrado (sin keyword de RAM): {modelo[:60]}")
+                            continue
+
+                    if self.categoria == "Almacenamiento":
+                        if any(kw in modelo_lower for kw in ['pendrive', 'flash drive', 'datatraveler', 'micro sd', 'microsd', 'sd card', 'gabinete', 'carcasa', 'adaptador']):
+                            print(f"  [ML] Filtrado (no es almacenamiento): {modelo[:60]}")
+                            continue
+                        if not any(kw in modelo_lower for kw in ['ssd', 'hdd', 'nvme', 'm.2', 'disco']):
+                            print(f"  [ML] Filtrado (sin keyword de almacenamiento): {modelo[:60]}")
+                            continue
+
                     precio_tag = item.find('span', class_='andes-money-amount__fraction')
                     if not precio_tag:
                         continue
@@ -345,8 +369,8 @@ class CompraGamerScraper(ScraperBase):
             # Requerir keywords de RAM
             if not any(kw in modelo_lower for kw in ['ddr4', 'ddr5', 'ddr3', 'memoria ram', 'ram ']):
                 return False
-            # Excluir notebooks que mencionan RAM
-            if any(kw in modelo_lower for kw in ['notebook', 'laptop']):
+            # Excluir pendrives, tarjetas SD y notebooks que mencionan RAM
+            if any(kw in modelo_lower for kw in ['notebook', 'laptop', 'pendrive', 'flash drive', 'datatraveler', 'micro sd', 'microsd', 'sd card']):
                 return False
 
         if self.categoria == "Almacenamiento":

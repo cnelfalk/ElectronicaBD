@@ -239,19 +239,26 @@ class IntelScraperCPU(ScraperBase):
 
     URL_ARK = "https://ark.intel.com/content/www/us/en/ark.html"
 
-    # Series recientes que nos interesan (generaciones 11+, Ultra, Series 1-3)
+    # Series recientes que nos interesan (generaciones 11+, Ultra, Series 1)
+    # EXCLUIDAS deliberadamente:
+    #   intel-core-processors-series-2 → todos son embedded (E, TE, PE, PTE, PQE) — no se venden al retail
+    #   intel-core-processors-series-3 → no disponibles en Argentina; ML devuelve resultados incorrectos
     SERIES_KEYWORDS = [
         '13th-generation-intel-core-i7',
         '13th-generation-intel-core-i5',
         '14th-gen',
         'intel-core-ultra-processors-series-2',
         'intel-core-ultra-processors-series-1',
-        'intel-core-processors-series-3',
-        'intel-core-processors-series-2',
         'intel-core-processors-series-1',
         '12th-generation-intel-core-i7',
         '12th-generation-intel-core-i5',
     ]
+
+    # Sufijos que identifican CPUs embedded/OEM — nunca se venden al retail
+    # E/TE = Embedded  |  PE/PTE/PQE = Performance Embedded  |  HL/UL = Ultra-low power OEM
+    SUFIJOS_EMBEDDED = re.compile(
+        r'\d+(?:PQE|PTE|PE|TE|HL|UL|E)\b', re.IGNORECASE
+    )
 
     def __init__(self):
         super().__init__("Intel")
@@ -329,6 +336,11 @@ class IntelScraperCPU(ScraperBase):
                     nombre = celdas[0].text.strip()
                     # Filtrar solo procesadores Core / Core Ultra
                     if 'Core' not in nombre and 'core' not in nombre.lower():
+                        continue
+
+                    # Saltar CPUs embedded/OEM — no se venden al retail en Argentina
+                    # Detecta sufijos: E, TE, PE, PTE, PQE (embedded) y HL, UL (ultra-low OEM)
+                    if self.SUFIJOS_EMBEDDED.search(nombre):
                         continue
 
                     modelo = nombre if 'Intel' in nombre else f"Intel {nombre}"
