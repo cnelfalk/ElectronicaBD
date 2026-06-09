@@ -1,10 +1,16 @@
 from dao.producto_dao import ProductoDAO
+from dao.marca_dao import MarcaDAO
+from dao.categoria_dao import CategoriaDAO
+from dao.tienda_dao import TiendaDAO
 
 # ProductoServicio - clase que procesa las reglas de negocio vinculadas al hardware
 class ProductoServicio:
-    # __init__ - inicializa instanciando el DAO necesario para extraer los datos
+    # __init__ - inicializa instanciando los DAOs necesarios para extraer los datos
     def __init__(self):
         self.productoDao = ProductoDAO()
+        self.marcaDao = MarcaDAO()
+        self.categoriaDao = CategoriaDAO()
+        self.tiendaDao = TiendaDAO()
 
     # listarProductos - metodo que orquesta la busqueda y prepara la respuesta
     def listarProductos(self, categoria, perfil, busqueda, marca=None, ordenar=None):
@@ -16,10 +22,20 @@ class ProductoServicio:
         else:
             return {"success": True, "data": [], "mensaje": "No se encontraron productos"}
 
-    # obtenerMarcas - devuelve la lista de marcas con productos para poblar el filtro del catálogo
+    # obtenerMarcas - devuelve solo las marcas que tienen productos en el catálogo
     def obtenerMarcas(self):
-        marcas = self.productoDao.obtenerMarcasConProductos()
-        return {"success": True, "data": marcas}
+        marcas = self.marcaDao.obtenerMarcasConProductos()
+        return {"success": True, "data": [m.to_dict() for m in marcas]}
+
+    # obtenerCategorias - devuelve la lista de categorías del sistema
+    def obtenerCategorias(self):
+        categorias = self.categoriaDao.obtenerCategorias()
+        return {"success": True, "data": [c.to_dict() for c in categorias]}
+
+    # obtenerTiendas - devuelve la lista de tiendas registradas
+    def obtenerTiendas(self):
+        tiendas = self.tiendaDao.obtenerTiendas()
+        return {"success": True, "data": [t.to_dict() for t in tiendas]}
 
     # obtenerDetalle - devuelve el detalle completo de un producto (specs + precios)
     def obtenerDetalle(self, idProducto):

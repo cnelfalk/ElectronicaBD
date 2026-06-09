@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
             productos.forEach(producto => {
                 const imgSrc = producto.img_url || '';
                 const badgeClass = obtenerBadgeClass(producto.categoria);
-                
+
                 // Validación por si la fecha viene nula desde la BD
                 let fechaTexto = 'Desconocida';
                 if (producto.fecha_agregado_fav) {
@@ -62,10 +62,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const cardHTML = `
-                    <div class="tm-card" id="fav-card-${producto.id_producto}">
+                    <div class="tm-card" id="fav-card-${producto.id_producto}"
+                         style="cursor: pointer;"
+                         onclick="navegarADetalle(event, ${producto.id_producto})">
                         <div class="tm-card-img">
                             ${imgSrc
-                                ? `<img src="${imgSrc}" alt="${producto.modelo}" 
+                                ? `<img src="${imgSrc}" alt="${producto.modelo}"
                                         onerror="this.style.display='none'; this.parentElement.innerHTML = generarPlaceholder('${producto.marca}');">`
                                 : generarPlaceholder(producto.marca)
                             }
@@ -74,17 +76,22 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span class="tm-card-badge ${badgeClass}">${producto.categoria}</span>
                             <h3 class="tm-card-title" title="${producto.modelo}">${producto.modelo}</h3>
                             <p class="tm-card-brand">${producto.marca}</p>
-                            
+
                             <p style="font-size: 0.75rem; color: var(--tm-text-muted); margin-bottom: 0.8rem;">
                                 Guardado el: ${fechaTexto}
                             </p>
 
                             <div class="tm-card-actions">
-                                <button class="tm-btn tm-btn-outline tm-btn-sm" data-id="${producto.id_producto}" data-categoria="${producto.categoria}" data-modelo="${producto.modelo}" onclick="agregarComparar(this)">
+                                <button class="tm-btn tm-btn-outline tm-btn-sm"
+                                        data-id="${producto.id_producto}"
+                                        data-categoria="${producto.categoria}"
+                                        data-modelo="${producto.modelo}"
+                                        onclick="agregarComparar(this)">
                                     ⚖️ Comparar
                                 </button>
-                                
-                                <button class="tm-btn tm-btn-primary tm-btn-sm" data-id="${producto.id_producto}" onclick="eliminarDeFavoritos(this)">
+                                <button class="tm-btn tm-btn-primary tm-btn-sm"
+                                        data-id="${producto.id_producto}"
+                                        onclick="eliminarDeFavoritos(this)">
                                     ❌ Quitar
                                 </button>
                             </div>
@@ -93,6 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
                 contenedorFavoritos.insertAdjacentHTML('beforeend', cardHTML);
             });
+
+            // Reflejar el estado actual de comparación en los botones recién renderizados
+            actualizarBotonesComparar();
         }
 
         // Ejecutar carga
@@ -110,7 +120,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// --- NAVEGACIÓN ---
+
+// Redirige al detalle del producto al hacer clic en cualquier parte de la tarjeta,
+// excepto cuando el clic fue sobre un botón de acción.
+function navegarADetalle(event, idProducto) {
+    if (event.target.closest('button')) return;
+    window.location.href = `detalle_producto.php?id=${idProducto}`;
+}
+
 // --- FUNCIONES GLOBALES ---
+
 function obtenerBadgeClass(categoria) {
     const clases = { 'CPU': 'tm-badge-cpu', 'GPU': 'tm-badge-gpu', 'RAM': 'tm-badge-ram', 'Laptop': 'tm-badge-laptop', 'Almacenamiento': 'tm-badge-storage' };
     return clases[categoria] || 'tm-badge-laptop';
@@ -136,6 +156,8 @@ function generarPlaceholder(marca) {
             </div>`;
 }
 
+// --- COMPARACIÓN ---
+
 function obtenerComparacion() {
     const items = sessionStorage.getItem('techmatch_comparar');
     return items ? JSON.parse(items) : [];
@@ -144,6 +166,26 @@ function obtenerComparacion() {
 function guardarComparacion(items) {
     sessionStorage.setItem('techmatch_comparar', JSON.stringify(items));
     actualizarBarraComparacion();
+}
+
+// Sincroniza el estado visual de los botones "Comparar" con el sessionStorage.
+// Corrige el bug donde el botón quedaba deshabilitado tras quitar el producto de la barra.
+function actualizarBotonesComparar() {
+    const items = obtenerComparacion();
+    const ids = items.map(item => item.id);
+
+    document.querySelectorAll('[onclick="agregarComparar(this)"]').forEach(btn => {
+        const id = btn.dataset.id;
+        if (ids.includes(id)) {
+            btn.innerHTML = '✅ Agregado';
+            btn.disabled = true;
+            btn.style.opacity = '0.6';
+        } else {
+            btn.innerHTML = '⚖️ Comparar';
+            btn.disabled = false;
+            btn.style.opacity = '1';
+        }
+    });
 }
 
 function agregarComparar(btn) {
@@ -167,20 +209,19 @@ function agregarComparar(btn) {
 
     items.push({ id, categoria, modelo });
     guardarComparacion(items);
-
-    btn.innerHTML = '✅ Agregado';
-    btn.disabled = true;
-    btn.style.opacity = '0.6';
+    actualizarBotonesComparar();
 }
 
 function quitarComparar(id) {
     let items = obtenerComparacion();
     items = items.filter(item => item.id !== id);
     guardarComparacion(items);
+    actualizarBotonesComparar();
 }
 
 function limpiarComparar() {
     guardarComparacion([]);
+    actualizarBotonesComparar();
 }
 
 function irAComparar() {
@@ -240,15 +281,22 @@ window.addEventListener('DOMContentLoaded', () => {
     actualizarBarraComparacion();
 });
 
+// --- ELIMINAR FAVORITO ---
+
 async function eliminarDeFavoritos(btn) {
     const usuarioInfo = localStorage.getItem('techmatch_usuario');
     if (!usuarioInfo) return;
 
+    // Confirmación antes de quitar (mismo patrón que comparaciones guardadas)
+    if (!(await mostrarConfirmacion('¿Estás seguro de que querés quitar este producto de tus favoritos?'))) {
+        return;
+    }
+
     const usuario = JSON.parse(usuarioInfo);
     const idProducto = btn.dataset.id;
     const textoOriginal = btn.innerHTML;
-    
-    btn.innerHTML = '⏳ Quitándolo...';
+
+    btn.innerHTML = '⏳';
     btn.disabled = true;
 
     try {
@@ -261,8 +309,11 @@ async function eliminarDeFavoritos(btn) {
             })
         });
         const datos = await respuesta.json();
-        
+
         if (datos.success) {
+            // Si el producto estaba en la barra de comparación, quitarlo también
+            quitarComparar(idProducto);
+
             const tarjeta = document.getElementById(`fav-card-${idProducto}`);
             if (tarjeta) tarjeta.remove();
 

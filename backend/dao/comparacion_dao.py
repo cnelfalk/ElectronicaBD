@@ -72,7 +72,7 @@ class ComparacionDAO:
                 SELECT cg.id_comparacion
                 FROM comparaciones_guardadas cg
                 WHERE cg.id_usuario = %s
-                  AN (SEDLECT COUNT(*) FROM producto_comparacion c WHERE c.id_comparacion = cg.id_comparacion) = 2
+                  AND (SELECT COUNT(*) FROM producto_comparacion c WHERE c.id_comparacion = cg.id_comparacion) = 2
                   AND EXISTS (SELECT 1 FROM producto_comparacion c WHERE c.id_comparacion = cg.id_comparacion AND c.id_producto = %s)
                   AND EXISTS (SELECT 1 FROM producto_comparacion c WHERE c.id_comparacion = cg.id_comparacion AND c.id_producto = %s)
                 LIMIT 1

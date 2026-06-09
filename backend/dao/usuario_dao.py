@@ -10,7 +10,7 @@ class UsuarioDAO:
     # obtenerPorIdentificador - busca un usuario utilizando su correo electronico o nombre de usuario
     def obtenerPorIdentificador(self, identificador):
         # prepararConsulta - define el query SQL previniendo inyecciones SQL
-        # ACÁ ESTÁ EL CAMBIO: Buscamos por email O por nombre
+        # Buscamos por email o por nombre
         query = "SELECT * FROM usuarios WHERE email_usuario = %s OR nombre_usuario = %s"
         cursor = self.conexion.cursor(dictionary=True)
         try:

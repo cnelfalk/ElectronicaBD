@@ -80,23 +80,3 @@ class FavoritoDAO:
         finally:
             cursor.close()
 
-    # obtenerProductosPopulares - Devuelve los IDs de los productos más guardados como favorito.
-    # Se usa para el filtro "Más Populares" en el catálogo.
-    def obtenerProductosPopulares(self, limite=50):
-        query = """
-            SELECT p.id_producto, COUNT(*) as total_favoritos
-            FROM guarda_favorito gf
-            JOIN productos p ON gf.id_producto = p.id_producto
-            GROUP BY p.id_producto
-            ORDER BY total_favoritos DESC
-            LIMIT %s
-        """
-        cursor = self.conexion.cursor(dictionary=True)
-        try:
-            cursor.execute(query, (limite,))
-            return cursor.fetchall()
-        except Exception as e:
-            print(f"// errorObtenerProductosPopulares: {e}")
-            return []
-        finally:
-            cursor.close()

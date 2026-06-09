@@ -45,6 +45,14 @@
                     </select>
                 </div>
 
+                <div class="tm-filter-group">
+                    <label for="filtroOrdenar">Ordenar por</label>
+                    <select class="tm-select" id="filtroOrdenar">
+                        <option value="">A–Z (por defecto)</option>
+                        <option value="populares">🔥 Más populares</option>
+                    </select>
+                </div>
+
                 <button class="tm-btn tm-btn-primary tm-btn-w-full" id="btnAplicarFiltros">
                     Aplicar filtros</span>
                 </button>

@@ -1,5 +1,6 @@
 import mysql.connector
 from database.conexion import ConexionDB
+from modelos.tienda import Tienda
 
 class TiendaDAO:
     def __init__(self, conexion=None):
@@ -18,37 +19,26 @@ class TiendaDAO:
         try:
             sql = "SELECT id_tienda, nombre_tienda, url_tienda FROM tiendas ORDER BY nombre_tienda ASC"
             cursor.execute(sql)
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+            return [Tienda(r['id_tienda'], r['nombre_tienda'], r.get('url_tienda')) for r in rows]
         except mysql.connector.Error as err:
             print(f"// [TiendaDAO] Error al obtener tiendas: {err}")
             return []
         finally:
             cursor.close()
 
-    def obtenerTiendaPorId(self, id_tienda):
-        """Busca y devuelve una tienda específica por su ID primario."""
+
+    def obtenerTiendaPorNombre(self, nombre_tienda):
+        """Busca y devuelve una tienda específica por su nombre."""
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            sql = "SELECT id_tienda, nombre_tienda, url_tienda FROM tiendas WHERE id_tienda = %s"
-            cursor.execute(sql, (id_tienda,))
-            return cursor.fetchone()
+            sql = "SELECT id_tienda, nombre_tienda, url_tienda FROM tiendas WHERE nombre_tienda = %s"
+            cursor.execute(sql, (nombre_tienda,))
+            row = cursor.fetchone()
+            return Tienda(row['id_tienda'], row['nombre_tienda'], row.get('url_tienda')) if row else None
         except mysql.connector.Error as err:
-            print(f"// [TiendaDAO] Error al buscar tienda {id_tienda}: {err}")
+            print(f"// [TiendaDAO] Error al buscar tienda '{nombre_tienda}': {err}")
             return None
         finally:
             cursor.close()
 
-    def guardarTienda(self, nombre_tienda, url_tienda=None):
-        """Inserta una nueva tienda en el catálogo evitando duplicados por nombre."""
-        cursor = self.conexion.cursor()
-        try:
-            sql = "INSERT IGNORE INTO tiendas (nombre_tienda, url_tienda) VALUES (%s, %s)"
-            cursor.execute(sql, (nombre_tienda, url_tienda))
-            self.conexion.commit()
-            return True
-        except mysql.connector.Error as err:
-            print(f"// [TiendaDAO] Error al guardar tienda {nombre_tienda}: {err}")
-            self.conexion.rollback()
-            return False
-        finally:
-            cursor.close()

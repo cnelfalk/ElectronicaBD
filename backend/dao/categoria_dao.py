@@ -1,5 +1,6 @@
 import mysql.connector
 from database.conexion import ConexionDB
+from modelos.categoria import Categoria
 
 class CategoriaDAO:
     def __init__(self, conexion=None):
@@ -18,37 +19,25 @@ class CategoriaDAO:
         try:
             sql = "SELECT id_categoria, nombre_categoria FROM categorias ORDER BY nombre_categoria ASC"
             cursor.execute(sql)
-            return cursor.fetchall()
+            rows = cursor.fetchall()
+            return [Categoria(r['id_categoria'], r['nombre_categoria']) for r in rows]
         except mysql.connector.Error as err:
             print(f"// [CategoriaDAO] Error al obtener categorías: {err}")
             return []
         finally:
             cursor.close()
 
-    def obtenerCategoriaPorId(self, id_categoria):
-        """Busca y devuelve una categoría específica por su ID primario."""
+    def obtenerCategoriaPorNombre(self, nombre_categoria):
+        """Busca y devuelve una categoría por su nombre."""
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            sql = "SELECT id_categoria, nombre_categoria FROM categorias WHERE id_categoria = %s"
-            cursor.execute(sql, (id_categoria,))
-            return cursor.fetchone()
+            sql = "SELECT id_categoria, nombre_categoria FROM categorias WHERE nombre_categoria = %s"
+            cursor.execute(sql, (nombre_categoria,))
+            row = cursor.fetchone()
+            return Categoria(row['id_categoria'], row['nombre_categoria']) if row else None
         except mysql.connector.Error as err:
-            print(f"// [CategoriaDAO] Error al buscar categoría {id_categoria}: {err}")
+            print(f"// [CategoriaDAO] Error al buscar categoría '{nombre_categoria}': {err}")
             return None
         finally:
             cursor.close()
 
-    def guardarCategoria(self, nombre_categoria):
-        """Inserta una nueva categoría en el maestro."""
-        cursor = self.conexion.cursor()
-        try:
-            sql = "INSERT IGNORE INTO categorias (nombre_categoria) VALUES (%s)"
-            cursor.execute(sql, (nombre_categoria,))
-            self.conexion.commit()
-            return True
-        except mysql.connector.Error as err:
-            print(f"// [CategoriaDAO] Error al guardar categoría {nombre_categoria}: {err}")
-            self.conexion.rollback()
-            return False
-        finally:
-            cursor.close()

@@ -21,7 +21,7 @@ class Almacenamiento(Producto):
             "velLectura": self.velLectura,
             "velEscritura": self.velEscritura,
             
-            # Compatibilidad con frontend (snake_case)
+            # Compatibilidad con frontend 
             "capacidad_gb": self.capacidadGbAlmacenamiento,
             "tipo_disco": self.tipoAlmacenamiento,
             "tipo_almacenamiento": self.tipoAlmacenamiento,

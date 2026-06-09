@@ -6,7 +6,9 @@ from modelos.cpu import CPU
 from modelos.gpu import GPU
 from modelos.ram import RAM
 from modelos.almacenamiento import Almacenamiento
-
+from dao.marca_dao import MarcaDAO
+from dao.categoria_dao import CategoriaDAO
+from dao.tienda_dao import TiendaDAO
 
 # ProductoDAO - Capa exclusiva para comunicarse con MySQL. No contiene reglas de negocio.
 class ProductoDAO:
@@ -108,23 +110,6 @@ class ProductoDAO:
         finally:
             cursor.close()
 
-    # obtenerMarcasConProductos - Devuelve las marcas que tienen al menos un producto en el catálogo.
-    def obtenerMarcasConProductos(self):
-        cursor = self.conexion.cursor(dictionary=True)
-        try:
-            cursor.execute("""
-                SELECT DISTINCT m.nombre_marca as marca
-                FROM marcas m
-                JOIN productos p ON m.id_marca = p.id_marca
-                ORDER BY m.nombre_marca ASC
-            """)
-            return [row['marca'] for row in cursor.fetchall()]
-        except Exception as e:
-            print(f"// errorObtenerMarcas: {e}")
-            return []
-        finally:
-            cursor.close()
-
     # obtenerLaptopPorId - Recupera todos los datos fisicos y de rendimiento de una laptop especifica.
     def obtenerLaptopPorId(self, idProducto):
         query = """
@@ -209,15 +194,14 @@ class ProductoDAO:
                 return
 
             # Producto nuevo: inserción completa
-            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
-            marcaRow = cursor.fetchone()
-            if not marcaRow:
+            marcaObj = MarcaDAO().obtenerMarcaPorId_nombre(nombreMarca)
+            if not marcaObj:
                 print(f"// upsertLaptop: marca '{nombreMarca}' no encontrada en BD. Salteando.")
                 return
-            idMarca = marcaRow['id_marca']
+            idMarca = marcaObj.idMarca
 
-            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = 'Laptop'")
-            idCategoria = cursor.fetchone()['id_categoria']
+            categoriaObj = CategoriaDAO().obtenerCategoriaPorNombre('Laptop')
+            idCategoria = categoriaObj.idCategoria
 
             cursor.execute(
                 "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
@@ -234,13 +218,12 @@ class ProductoDAO:
 
             if precio > 0:
                 if validar_url_retail(urlProducto, nombreTienda):
-                    cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (nombreTienda,))
-                    tiendaRow = cursor.fetchone()
-                    if tiendaRow:
+                    tiendaObj = TiendaDAO().obtenerTiendaPorNombre(nombreTienda)
+                    if tiendaObj:
                         cursor.execute("""
                             INSERT INTO producto_tienda (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
                             VALUES (%s, %s, %s, %s, NOW())
-                        """, (idProductoGenerado, tiendaRow['id_tienda'], precio, urlProducto))
+                        """, (idProductoGenerado, tiendaObj.idTienda, precio, urlProducto))
                 else:
                     print(f"// upsertLaptop: Enlace invalido para {nombreTienda}: '{urlProducto}'. Salteando guardado de precio.")
 
@@ -259,20 +242,18 @@ class ProductoDAO:
     def upsertProductoRetail(self, modelo, imgUrl, nombreMarca, nombreCategoria, precio, urlProducto, nombreTienda):
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            # Obtener ID de marca y categoría
-            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
-            marcaRow = cursor.fetchone()
-            if not marcaRow:
+            # Obtener ID de marca y categoría usando los DAOs especializados
+            marcaObj = MarcaDAO().obtenerMarcaPorId_nombre(nombreMarca)
+            if not marcaObj:
                 print(f"// upsertProductoRetail: marca '{nombreMarca}' no encontrada en BD. Salteando.")
                 return
-            idMarca = marcaRow['id_marca']
+            idMarca = marcaObj.idMarca
 
-            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = %s", (nombreCategoria,))
-            categoriaRow = cursor.fetchone()
-            if not categoriaRow:
+            categoriaObj = CategoriaDAO().obtenerCategoriaPorNombre(nombreCategoria)
+            if not categoriaObj:
                 print(f"// upsertProductoRetail: categoría '{nombreCategoria}' no encontrada en BD. Salteando.")
                 return
-            idCategoria = categoriaRow['id_categoria']
+            idCategoria = categoriaObj.idCategoria
 
             # Consultar todos los productos cargados en la BD de esa marca y categoría
             cursor.execute(
@@ -417,18 +398,16 @@ class ProductoDAO:
                 return
 
             nombreMarca = "AMD" if "AMD" in modelo or "Ryzen" in modelo else "Intel"
-            cursor.execute("SELECT id_marca FROM marcas WHERE nombre_marca = %s", (nombreMarca,))
-            marcaRow = cursor.fetchone()
-            if not marcaRow:
+            marcaObj = MarcaDAO().obtenerMarcaPorId_nombre(nombreMarca)
+            if not marcaObj:
                 print(f"// upsertCPU: marca '{nombreMarca}' no encontrada en BD. Salteando.")
                 return
-            idMarca = marcaRow['id_marca']
+            idMarca = marcaObj.idMarca
 
-            cursor.execute("SELECT id_categoria FROM categorias WHERE nombre_categoria = 'CPU'")
-            categoriaRow = cursor.fetchone()
-            if not categoriaRow:
+            categoriaObj = CategoriaDAO().obtenerCategoriaPorNombre('CPU')
+            if not categoriaObj:
                 return
-            idCategoria = categoriaRow['id_categoria']
+            idCategoria = categoriaObj.idCategoria
 
             import re
             es_oculto = bool(re.search(r'(U|H|HX|HS|P|G[0-9]|UL|HL|TE|PE|PQE)$', modelo, re.IGNORECASE))

@@ -5,6 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtroMarca         = document.getElementById('filtroMarca');
     const filtroCategoria     = document.getElementById('filtroCategoria');
     const buscarNombre        = document.getElementById('buscarNombre');
+    const filtroOrdenar       = document.getElementById('filtroOrdenar');
 
     // Carga las marcas desde la API y puebla el select dinámicamente
     async function cargarMarcas() {
@@ -14,8 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success && data.data.length > 0) {
                 data.data.forEach(marca => {
                     const opt = document.createElement('option');
-                    opt.value = marca;
-                    opt.textContent = marca;
+                    opt.value = marca.nombreMarca;
+                    opt.textContent = marca.nombreMarca;
                     filtroMarca.appendChild(opt);
                 });
             }
@@ -38,6 +39,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filtroMarca.value)     params.append('marca',     filtroMarca.value);
         if (filtroCategoria.value) params.append('categoria', filtroCategoria.value);
         if (buscarNombre.value)    params.append('busqueda',  buscarNombre.value);
+        if (filtroOrdenar.value)   params.append('ordenar',   filtroOrdenar.value);
 
         const urlConFiltros = `${API_URL}/productos?${params.toString()}`;
 

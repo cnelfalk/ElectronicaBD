@@ -148,6 +148,22 @@ def obtenerMarcasEndpoint():
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
 
+# obtenerCategoriasEndpoint - ruta GET para listar todas las categorías del sistema
+@app.route('/api/categorias', methods=['GET'])
+def obtenerCategoriasEndpoint():
+    try:
+        return jsonify(productoServicio.obtenerCategorias()), 200
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
+# obtenerTiendasEndpoint - ruta GET para listar todas las tiendas registradas
+@app.route('/api/tiendas', methods=['GET'])
+def obtenerTiendasEndpoint():
+    try:
+        return jsonify(productoServicio.obtenerTiendas()), 200
+    except Exception as e:
+        return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
+
 # detalleProductoEndpoint - Ruta GET para obtener el detalle completo de un producto
 @app.route('/api/productos/<int:idProducto>', methods=['GET'])
 def detalleProductoEndpoint(idProducto):

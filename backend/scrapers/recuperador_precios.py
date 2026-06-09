@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scrapers.scraper_base import ScraperBase
 from utils.normalizacion import validar_url_retail
+from dao.tienda_dao import TiendaDAO
 
 class RecuperadorPrecios(ScraperBase):
     def __init__(self):
@@ -86,14 +87,13 @@ class RecuperadorPrecios(ScraperBase):
                     id_producto = item['id_producto']
                     cursor = self.dao.conexion.cursor(dictionary=True)
                     try:
-                        cursor.execute("SELECT id_tienda FROM tiendas WHERE nombre_tienda = %s", (self.TIENDA,))
-                        tienda_row = cursor.fetchone()
-                        if tienda_row:
+                        tiendaObj = TiendaDAO().obtenerTiendaPorNombre(self.TIENDA)
+                        if tiendaObj:
                             cursor.execute("""
                                 INSERT INTO producto_tienda (id_producto, id_tienda, precio, url_producto, fec_actualizacion)
                                 VALUES (%s, %s, %s, %s, NOW())
                                 ON DUPLICATE KEY UPDATE precio = %s, url_producto = %s, fec_actualizacion = NOW()
-                            """, (id_producto, tienda_row['id_tienda'], precio, urlVenta, precio, urlVenta))
+                            """, (id_producto, tiendaObj.idTienda, precio, urlVenta, precio, urlVenta))
                             self.dao.conexion.commit()
                             
                             # Actualizar imagen si el producto no tenia
