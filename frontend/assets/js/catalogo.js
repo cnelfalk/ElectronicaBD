@@ -403,8 +403,15 @@ window.addEventListener('DOMContentLoaded', () => {
 // Activar o desactivar favorito
 async function toggleFavorito(btn) {
     const usuarioInfo = localStorage.getItem('techmatch_usuario');
+    
     if (!usuarioInfo) {
-        window.location.href = 'login.php?redirect=catalogo.php';
+        // Usamos tu función personalizada con 'await' para que pause el código
+        const irALogin = await mostrarConfirmacion("Debes registrarte para guardar productos en favoritos. ¿Querés iniciar sesión ahora?");
+        
+        // Solo redirige si el usuario le da a "Aceptar/Sí"
+        if (irALogin) {
+            window.location.href = 'login.php?redirect=catalogo.php';
+        }
         return;
     }
 

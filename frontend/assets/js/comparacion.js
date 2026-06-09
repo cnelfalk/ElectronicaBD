@@ -55,7 +55,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // Escuchar el botón de Guardar Comparación
     if (btnGuardarComparacion) {
         btnGuardarComparacion.addEventListener('click', async () => {
-            if (!usuario) return;
+            
+            // ----------------------------------------------------------------------------------
+            // CAMBIO CLAVE: Interceptar el click si no está registrado
+            // ----------------------------------------------------------------------------------
+            if (!usuario) {
+                const irALogin = await mostrarConfirmacion("Debes registrarte para guardar comparaciones. ¿Querés iniciar sesión ahora?");
+                if (irALogin) {
+                    // Mantenemos la URL actual para que vuelva acá tras el login
+                    const parametrosActuales = encodeURIComponent(window.location.search);
+                    window.location.href = `login.php?redirect=comparar.php${parametrosActuales}`;
+                }
+                return; 
+            }
+            // ----------------------------------------------------------------------------------
 
             btnGuardarComparacion.innerHTML = '⏳ Guardando...';
             btnGuardarComparacion.disabled = true;
@@ -136,8 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
         ganadorNombre.textContent = data.ganador;
         ganadorMotivo.textContent = data.motivo;
 
-        // Mostrar botón de guardar si el usuario está logueado
-        if (usuario && btnGuardarComparacion) {
+        // Mostrar botón de guardar SIEMPRE (antes solo se mostraba si había usuario)
+        // CAMBIO: Ahora se muestra el botón incluso sin sesión
+        if (btnGuardarComparacion) {
             btnGuardarComparacion.style.display = 'inline-flex';
             if (data.yaGuardada) {
                 btnGuardarComparacion.disabled = true;
