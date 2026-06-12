@@ -51,7 +51,7 @@ class ProductoDAO:
                 ) fav_count ON p.id_producto = fav_count.id_producto
             """
 
-        query += " WHERE p.es_oculto = FALSE"
+        query += " WHERE 1=1"
         parametrosSql = []
 
         if categoria:
@@ -298,7 +298,7 @@ class ProductoDAO:
 
                 # Producto nuevo: inserción completa
                 cursor.execute(
-                    "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria, es_oculto) VALUES (%s, %s, %s, %s, FALSE)",
+                    "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
                     (modelo, imgUrl, idMarca, idCategoria)
                 )
                 idProducto = cursor.lastrowid
@@ -409,12 +409,9 @@ class ProductoDAO:
                 return
             idCategoria = categoriaObj.idCategoria
 
-            import re
-            es_oculto = bool(re.search(r'(U|H|HX|HS|P|G[0-9]|UL|HL|TE|PE|PQE)$', modelo, re.IGNORECASE))
-
             cursor.execute(
-                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria, es_oculto) VALUES (%s, %s, %s, %s, %s)",
-                (modelo, "", idMarca, idCategoria, es_oculto)
+                "INSERT INTO productos (modelo_producto, img_url, id_marca, id_categoria) VALUES (%s, %s, %s, %s)",
+                (modelo, "", idMarca, idCategoria)
             )
             idProducto = cursor.lastrowid
 
