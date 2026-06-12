@@ -156,22 +156,32 @@ class ScraperImagenes(ScraperBase):
         # limpiarQueryBusqueda - simplificar el modelo para búsqueda efectiva
         queryBusqueda = self._limpiarQueryBusqueda(modelo, marca)
 
-        # Construir URL de búsqueda en ML (con filtro de productos nuevos)
-        urlBusqueda = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
+        # Prefijo por categoría para que ML entienda qué tipo de producto es
+        PREFIJOS = {
+            'CPU':            'procesador',
+            'GPU':            'placa de video',
+            'RAM':            'memoria ram',
+            'Almacenamiento': 'disco ssd',
+        }
+        prefijo = PREFIJOS.get(categoria, '')
+        if prefijo and not queryBusqueda.lower().startswith(prefijo):
+            queryBusqueda = f"{prefijo} {queryBusqueda}"
+
+        # Construir URL usando la ruta de categoría específica de ML
+        rutaCategoria = self.RUTAS_ML.get(categoria, 'computacion')
+        urlBusqueda = f"https://listado.mercadolibre.com.ar/{rutaCategoria}/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
 
         try:
             driver.get(urlBusqueda)
             time.sleep(4)
 
             sopa = BeautifulSoup(driver.page_source, 'html.parser')
-            
-            # Buscar items de resultado de ML
             items = sopa.find_all('li', class_='ui-search-layout__item')
 
             if not items:
-                # Fallback: buscar sin restricción de categoría (con filtro de productos nuevos)
-                urlGeneral = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
-                driver.get(urlGeneral)
+                # Fallback: búsqueda general dentro de la categoría sin filtro extra
+                urlFallback = f"https://listado.mercadolibre.com.ar/{rutaCategoria}/{queryBusqueda.replace(' ', '-')}"
+                driver.get(urlFallback)
                 time.sleep(4)
                 sopa = BeautifulSoup(driver.page_source, 'html.parser')
                 items = sopa.find_all('li', class_='ui-search-layout__item')
@@ -179,10 +189,14 @@ class ScraperImagenes(ScraperBase):
             if not items:
                 return None
 
-            # Extraer imagen del primer resultado relevante
-            for item in items[:5]:
-                # Safety check: skip used items
+            # Extraer imagen del primer resultado cuyo título sea coherente con la categoría
+            for item in items[:8]:
                 if "usado" in item.text.lower():
+                    continue
+                # Extraer solo el título del item (no todo el texto de la tarjeta)
+                tituloTag = item.find('h2') or item.find('a', class_=lambda c: c and 'title' in c)
+                tituloTexto = tituloTag.get_text(strip=True) if tituloTag else item.find('a').get_text(strip=True) if item.find('a') else ''
+                if not self._tituloEsCoherente(tituloTexto, categoria):
                     continue
                 imgUrl = self._extraerImagenDeItem(item)
                 if imgUrl:
@@ -193,6 +207,45 @@ class ScraperImagenes(ScraperBase):
         except Exception as e:
             print(f"  [IMG]   Error en búsqueda ML: {e}")
             return None
+
+    def _tituloEsCoherente(self, textoItem, categoria):
+        """
+        Verifica que el título de un resultado de ML corresponde a la categoría esperada.
+        Evita que una búsqueda de CPU devuelva imágenes de notebooks, etc.
+        """
+        texto = textoItem.lower()
+
+        # Palabras que NO deben aparecer en el TÍTULO según la categoría
+        # (solo frases claras de otra categoría, no términos ambiguos)
+        EXCLUSIONES = {
+            'CPU':            ['notebook', 'laptop', 'placa de video'],
+            'GPU':            ['notebook', 'laptop', 'memoria ram'],
+            'RAM':            ['notebook', 'laptop', 'placa de video', 'pendrive'],
+            'Almacenamiento': ['notebook', 'laptop', 'memoria ram', 'placa de video', 'pendrive'],
+            'Laptop':         ['placa de video geforce', 'placa de video radeon', 'memoria ram ddr'],
+        }
+
+        # Al menos una de estas palabras debe aparecer en el título
+        REQUERIDAS = {
+            'CPU':            ['procesador', 'ryzen', 'core i', 'intel core', 'athlon', 'celeron', 'pentium', 'core ultra', 'amd ryzen'],
+            'GPU':            ['placa de video', 'geforce', 'radeon rx', 'rtx', 'gtx'],
+            'RAM':            ['memoria ram', 'ddr4', 'ddr5', 'memoria ddr'],
+            'Almacenamiento': ['ssd', 'disco solido', 'nvme', 'disco rigido'],
+            'Laptop':         ['notebook', 'laptop'],
+        }
+
+        exclusiones = EXCLUSIONES.get(categoria, [])
+        requeridas  = REQUERIDAS.get(categoria, [])
+
+        # Rechazar si contiene palabras de categoría incorrecta
+        if any(ex in texto for ex in exclusiones):
+            return False
+
+        # Aceptar solo si contiene al menos una palabra esperada (si hay lista)
+        if requeridas and not any(req in texto for req in requeridas):
+            return False
+
+        return True
 
     def _limpiarQueryBusqueda(self, modelo, marca):
         """
