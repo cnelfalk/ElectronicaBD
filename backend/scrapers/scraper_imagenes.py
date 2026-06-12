@@ -156,20 +156,8 @@ class ScraperImagenes(ScraperBase):
         # limpiarQueryBusqueda - simplificar el modelo para búsqueda efectiva
         queryBusqueda = self._limpiarQueryBusqueda(modelo, marca)
 
-        # Prefijo por categoría para que ML entienda qué tipo de producto es
-        PREFIJOS = {
-            'CPU':            'procesador',
-            'GPU':            'placa de video',
-            'RAM':            'memoria ram',
-            'Almacenamiento': 'disco ssd',
-        }
-        prefijo = PREFIJOS.get(categoria, '')
-        if prefijo and not queryBusqueda.lower().startswith(prefijo):
-            queryBusqueda = f"{prefijo} {queryBusqueda}"
-
-        # Construir URL usando la ruta de categoría específica de ML
-        rutaCategoria = self.RUTAS_ML.get(categoria, 'computacion')
-        urlBusqueda = f"https://listado.mercadolibre.com.ar/{rutaCategoria}/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
+        # URL original que funcionaba (sin ruta de categoría en el path)
+        urlBusqueda = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}_ItemType*id_N_NoIndex_True"
 
         try:
             driver.get(urlBusqueda)
@@ -179,8 +167,8 @@ class ScraperImagenes(ScraperBase):
             items = sopa.find_all('li', class_='ui-search-layout__item')
 
             if not items:
-                # Fallback: búsqueda general dentro de la categoría sin filtro extra
-                urlFallback = f"https://listado.mercadolibre.com.ar/{rutaCategoria}/{queryBusqueda.replace(' ', '-')}"
+                # Fallback sin el filtro _ItemType
+                urlFallback = f"https://listado.mercadolibre.com.ar/{queryBusqueda.replace(' ', '-')}"
                 driver.get(urlFallback)
                 time.sleep(4)
                 sopa = BeautifulSoup(driver.page_source, 'html.parser')
@@ -189,18 +177,19 @@ class ScraperImagenes(ScraperBase):
             if not items:
                 return None
 
-            # Extraer imagen del primer resultado cuyo título sea coherente con la categoría
+            # Validar por título (h2) para evitar fotos de otra categoría
             for item in items[:8]:
                 if "usado" in item.text.lower():
                     continue
-                # Extraer solo el título del item (no todo el texto de la tarjeta)
                 tituloTag = item.find('h2') or item.find('a', class_=lambda c: c and 'title' in c)
-                tituloTexto = tituloTag.get_text(strip=True) if tituloTag else item.find('a').get_text(strip=True) if item.find('a') else ''
-                if not self._tituloEsCoherente(tituloTexto, categoria):
+                tituloTexto = tituloTag.get_text(strip=True) if tituloTag else ''
+                # Solo filtramos si obtuvimos un título real; si está vacío, aceptamos
+                if tituloTexto and not self._tituloEsCoherente(tituloTexto, categoria):
                     continue
                 imgUrl = self._extraerImagenDeItem(item)
                 if imgUrl:
                     return imgUrl
+
 
             return None
 
