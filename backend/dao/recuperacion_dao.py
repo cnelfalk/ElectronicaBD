@@ -34,7 +34,7 @@ class RecuperacionDAO:
             SELECT id_codigo, codigo, fec_expiracion, usado
             FROM codigos_recuperacion
             WHERE id_usuario = %s AND codigo = %s AND usado = 0 AND fec_expiracion > NOW()
-            ORDER BY fec_creacion DESC
+            ORDER BY id_codigo DESC
             LIMIT 1
         """
         cursor = self.conexion.cursor(dictionary=True)
@@ -51,7 +51,7 @@ class RecuperacionDAO:
     def guardarToken(self, idCodigo, token):
         query = """
             UPDATE codigos_recuperacion
-            SET token_verificacion = %s
+            SET token = %s
             WHERE id_codigo = %s
         """
         cursor = self.conexion.cursor()
@@ -71,7 +71,7 @@ class RecuperacionDAO:
         query = """
             SELECT id_codigo
             FROM codigos_recuperacion
-            WHERE id_usuario = %s AND token_verificacion = %s AND usado = 0 AND fec_expiracion > NOW()
+            WHERE id_usuario = %s AND token = %s AND usado = 0 AND fec_expiracion > NOW()
             LIMIT 1
         """
         cursor = self.conexion.cursor(dictionary=True)

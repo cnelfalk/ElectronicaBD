@@ -269,25 +269,24 @@ class ComparacionServicio:
         for gpu in [gpuA, gpuB]:
             if gpu:
                 gpu['vram_gb'] = int(gpu.get('vram_gb') or 8)
-                gpu['bus_bits'] = int(gpu.get('bus_bits') or 128)
                 gpu['tdp_w'] = int(gpu.get('tdp_w') or 150)
 
         perfilLower = perfilUso.lower() if perfilUso else "general"
         perfilLower = perfilLower.replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
 
-        # Scoring basado en VRAM (peso fuerte), bus y TDP
+        # Scoring basado en VRAM y TDP (bus_bits no existe en la BD)
         if perfilLower in ['gaming', 'diseño']:
-            # Gaming/Diseño: VRAM es rey, bus importa para ancho de banda
-            recomendacion['puntajeA'] = (gpuA['vram_gb'] * 10) + (gpuA['bus_bits'] / 16) + (gpuA['tdp_w'] * 0.1)
-            recomendacion['puntajeB'] = (gpuB['vram_gb'] * 10) + (gpuB['bus_bits'] / 16) + (gpuB['tdp_w'] * 0.1)
+            # Gaming/Diseño: VRAM es rey
+            recomendacion['puntajeA'] = (gpuA['vram_gb'] * 10) + (gpuA['tdp_w'] * 0.1)
+            recomendacion['puntajeB'] = (gpuB['vram_gb'] * 10) + (gpuB['tdp_w'] * 0.1)
         elif perfilLower == 'ofimatica':
             # Ofimática: bajo consumo es prioritario, VRAM es secundaria
             recomendacion['puntajeA'] = (gpuA['vram_gb'] * 5) + (300 - gpuA['tdp_w']) * 0.5
             recomendacion['puntajeB'] = (gpuB['vram_gb'] * 5) + (300 - gpuB['tdp_w']) * 0.5
         else:
             # General: balance entre VRAM y consumo
-            recomendacion['puntajeA'] = (gpuA['vram_gb'] * 8) + (gpuA['bus_bits'] / 16)
-            recomendacion['puntajeB'] = (gpuB['vram_gb'] * 8) + (gpuB['bus_bits'] / 16)
+            recomendacion['puntajeA'] = (gpuA['vram_gb'] * 8)
+            recomendacion['puntajeB'] = (gpuB['vram_gb'] * 8)
 
         # Determinar ganador
         if recomendacion['puntajeA'] > recomendacion['puntajeB']:
@@ -295,8 +294,6 @@ class ComparacionServicio:
             motivos = []
             if gpuA['vram_gb'] > gpuB['vram_gb']:
                 motivos.append(f"mayor VRAM ({gpuA['vram_gb']} GB vs {gpuB['vram_gb']} GB)")
-            if gpuA['bus_bits'] > gpuB['bus_bits']:
-                motivos.append(f"un bus de memoria más amplio ({gpuA['bus_bits']} bits vs {gpuB['bus_bits']} bits)")
             detalles = ", ".join(motivos) if motivos else "un mejor equilibrio de rendimiento general"
             recomendacion['motivo'] = f"Esta placa de video es recomendada para el perfil '{perfilUso}' porque ofrece {detalles}."
         elif recomendacion['puntajeB'] > recomendacion['puntajeA']:
@@ -304,8 +301,6 @@ class ComparacionServicio:
             motivos = []
             if gpuB['vram_gb'] > gpuA['vram_gb']:
                 motivos.append(f"mayor VRAM ({gpuB['vram_gb']} GB vs {gpuA['vram_gb']} GB)")
-            if gpuB['bus_bits'] > gpuA['bus_bits']:
-                motivos.append(f"un bus de memoria más amplio ({gpuB['bus_bits']} bits vs {gpuA['bus_bits']} bits)")
             detalles = ", ".join(motivos) if motivos else "un mejor equilibrio de rendimiento general"
             recomendacion['motivo'] = f"Esta placa de video es recomendada para el perfil '{perfilUso}' porque ofrece {detalles}."
         else:

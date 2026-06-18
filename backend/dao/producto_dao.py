@@ -16,9 +16,9 @@ class ProductoDAO:
     def conexion(self):
         return ConexionDB.obtenerInstancia()
 
-    # obtenerCatalogoFiltrado - Construye consultas SQL dinamicas para la grilla del frontend.
-    # Atributos: categoria (str), perfil (str), busqueda (str), marca (str), ordenar (str)
-    def obtenerCatalogoFiltrado(self, categoria=None, perfil=None, busqueda=None, marca=None, ordenar=None):
+# obtenerCatalogoFiltrado - Construye consultas SQL dinamicas para la grilla del frontend.
+    # Atributos: categoria (str), busqueda (str), marca (str), ordenar (str)
+    def obtenerCatalogoFiltrado(self, categoria=None, busqueda=None, marca=None, ordenar=None):
         # esPopulares - determina si el usuario quiere ver los productos más guardados como favorito
         esPopulares = (ordenar == 'populares')
 
@@ -65,18 +65,6 @@ class ProductoDAO:
         if marca:
             query += " AND m.nombre_marca = %s"
             parametrosSql.append(marca)
-
-        if perfil:
-            # Subconsulta para evitar duplicados al filtrar relaciones N:M
-            query += """
-                AND p.id_producto IN (
-                    SELECT pp.id_producto
-                    FROM productos_perfiles pp
-                    JOIN perfiles_uso pu ON pp.id_perfil = pu.id_perfil
-                    WHERE pu.nombre_perfil = %s
-                )
-            """
-            parametrosSql.append(perfil)
 
         # ordenarResultados - si es popular, ordena por cantidad de favoritos descendente
         if esPopulares:

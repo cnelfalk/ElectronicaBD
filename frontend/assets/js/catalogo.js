@@ -15,8 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.success && data.data.length > 0) {
                 data.data.forEach(marca => {
                     const opt = document.createElement('option');
-                    opt.value = marca.nombreMarca;
-                    opt.textContent = marca.nombreMarca;
+                    
+                    // CORRECCIÓN: Maneja tanto si el backend manda texto simple o un objeto de BD
+                    const valorMarca = marca.nombre_marca || marca.nombre || marca; 
+                    
+                    opt.value = valorMarca;
+                    opt.textContent = valorMarca;
                     filtroMarca.appendChild(opt);
                 });
             }
@@ -39,7 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (filtroMarca.value)     params.append('marca',     filtroMarca.value);
         if (filtroCategoria.value) params.append('categoria', filtroCategoria.value);
         if (buscarNombre.value)    params.append('busqueda',  buscarNombre.value);
-        if (filtroOrdenar.value)   params.append('ordenar',   filtroOrdenar.value);
+        
+        // Se agrega validación segura para el nuevo filtro de orden
+        if (filtroOrdenar && filtroOrdenar.value) {
+            params.append('orden', filtroOrdenar.value);
+        }
 
         const urlConFiltros = `${API_URL}/productos?${params.toString()}`;
 

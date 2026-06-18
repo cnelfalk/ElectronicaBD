@@ -1,14 +1,29 @@
-// Colocar la IP de Tailscale o actualizar si se despliega en otro ambiente
-// Se detecta automáticamente si se está probando en localhost o 127.0.0.1
+// Detección automática del entorno para apuntar a la API Flask correcta
 var API_URL;
+var API_USAR_PROXY = false;  // true cuando se usa el proxy PHP (dominio público)
+
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    API_URL = 'http://localhost:5000/api';
+    // Desarrollo local en Windows: Flask corre en el servidor Linux remoto
+    API_URL = 'http://100.82.23.52:5000/api';
 } else if (window.location.hostname === 'proyectomans.servehttp.com') {
-    API_URL = '/techmatch/api';
+    // Dominio público: usar el proxy PHP para evitar dependencia del proxy Apache
+    API_URL = '/techmatch/frontend/utils/proxy.php';
+    API_USAR_PROXY = true;
 } else {
+    // Acceso directo por IP (ej: 100.82.23.52) o cualquier otro host
     API_URL = 'http://100.82.23.52:5000/api';
 }
 
+
+// construirUrl - arma la URL correcta según si se usa proxy o acceso directo
+function construirUrl(endpoint) {
+    if (API_USAR_PROXY) {
+        // El endpoint puede tener sus propios query params (ej: /productos?marca=AMD)
+        // Los encodificamos en el parámetro 'ruta' del proxy
+        return `${API_URL}?ruta=${encodeURIComponent(endpoint)}`;
+    }
+    return `${API_URL}${endpoint}`;
+}
 
 async function apiRequest(endpoint, options = {}) {
     const config = {
@@ -16,7 +31,7 @@ async function apiRequest(endpoint, options = {}) {
         ...options
     };
 
-    const respuesta = await fetch(`${API_URL}${endpoint}`, config);
+    const respuesta = await fetch(construirUrl(endpoint), config);
 
     if (!respuesta.ok) {
         let msg = `Error HTTP: ${respuesta.status}`;

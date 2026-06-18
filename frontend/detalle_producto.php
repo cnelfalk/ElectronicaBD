@@ -235,7 +235,7 @@
                 'GPU': 'tm-badge-gpu',
                 'RAM': 'tm-badge-ram',
                 'Laptop': 'tm-badge-laptop',
-                'Almacenamiento': 'tm-badge-laptop'
+                'Almacenamiento': 'tm-badge-storage'
             };
             const badgeClass = badgeClasses[producto.categoria] || 'tm-badge-laptop';
 

@@ -197,7 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
             specs = [
                 { label: 'VRAM', valA: `${data.datosA.vram_gb} GB`, valB: `${data.datosB.vram_gb} GB`, rawA: data.datosA.vram_gb, rawB: data.datosB.vram_gb, highlight: true },
                 { label: 'Tipo de Memoria', valA: data.datosA.tipo_memoria, valB: data.datosB.tipo_memoria, highlight: false },
-                { label: 'Bus de Memoria', valA: data.datosA.bus_bits ? `${data.datosA.bus_bits} bits` : '-', valB: data.datosB.bus_bits ? `${data.datosB.bus_bits} bits` : '-', rawA: data.datosA.bus_bits, rawB: data.datosB.bus_bits, highlight: true },
                 { label: 'TDP', valA: `${data.datosA.tdp_w} W`, valB: `${data.datosB.tdp_w} W`, rawA: data.datosA.tdp_w, rawB: data.datosB.tdp_w, highlight: true, menorEsMejor: true }
             ];
         } else if (categoria === 'RAM') {
