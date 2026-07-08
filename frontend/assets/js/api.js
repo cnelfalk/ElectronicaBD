@@ -1,17 +1,20 @@
 // Detección automática del entorno para apuntar a la API Flask correcta
 var API_URL;
-var API_USAR_PROXY = false;  // true cuando se usa el proxy PHP (dominio público)
+var API_USAR_PROXY = false;
 
 if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     // Desarrollo local en Windows: Flask corre en el servidor Linux remoto
     API_URL = 'http://100.82.23.52:5000/api';
 } else if (window.location.hostname === 'proyectomans.servehttp.com') {
-    // Dominio público: usar el proxy PHP para evitar dependencia del proxy Apache
-    API_URL = '/techmatch/frontend/utils/proxy.php';
-    API_USAR_PROXY = true;
+    // Dominio público con Caddy: el reverse_proxy de Caddy ya redirige
+    // /techmatch/api/* → localhost:5000/api/* sin necesidad de proxy PHP.
+    // (handle_path /techmatch/* stripea el prefijo, por eso se usa /techmatch/api)
+    API_URL = '/techmatch/api';
+    API_USAR_PROXY = false;
 } else {
-    // Acceso directo por IP (ej: 100.82.23.52) o cualquier otro host
-    API_URL = 'http://100.82.23.52:5000/api';
+    // Acceso directo por IP de Tailscale: Caddy redirige /api/* → localhost:5000
+    API_URL = '/api';
+    API_USAR_PROXY = false;
 }
 
 

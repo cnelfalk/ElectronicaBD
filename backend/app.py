@@ -254,7 +254,9 @@ def guardarComparacionEndpoint():
         idCategoria = comparacionServicio.productoDao.obtenerIdCategoriaNumerica(idProductoA)
 
         resultado = comparacionServicio.guardarComparacion(idUsuario, idProductoA, idProductoB, idCategoria)
-        return jsonify(resultado), 200 if resultado['success'] else 400
+        if resultado.get('duplicado'):
+            return jsonify(resultado), 409
+        return jsonify(resultado), 200 if resultado['success'] else 500
     except Exception as e:
         return jsonify({'success': False, 'mensaje': f'Error del servidor: {str(e)}'}), 500
 

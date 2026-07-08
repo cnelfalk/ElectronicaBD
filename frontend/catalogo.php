@@ -30,14 +30,7 @@
                     <label for="filtroMarca">Marca</label>
                     <select class="tm-select" id="filtroMarca">
                         <option value="">Todas las marcas</option>
-                        <option value="AMD">AMD</option>
-                        <option value="Intel">Intel</option>
-                        <option value="NVIDIA">NVIDIA</option>
-                        <option value="ASUS">ASUS</option>
-                        <option value="Lenovo">Lenovo</option>
-                        <option value="Corsair">Corsair</option>
-                        <option value="Kingston">Kingston</option>
-                        <option value="Western Digital">Western Digital</option>
+                        <!-- Opciones cargadas dinámicamente por catalogo.js desde la API -->
                     </select>
                 </div>
 

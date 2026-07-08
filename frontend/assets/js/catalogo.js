@@ -16,8 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 data.data.forEach(marca => {
                     const opt = document.createElement('option');
                     
-                    // CORRECCIÓN: Maneja tanto si el backend manda texto simple o un objeto de BD
-                    const valorMarca = marca.nombre_marca || marca.nombre || marca; 
+                    // El backend devuelve objetos Marca con campo 'nombreMarca' (camelCase)
+                    const valorMarca = marca.nombreMarca || marca.nombre_marca || marca.nombre || marca; 
                     
                     opt.value = valorMarca;
                     opt.textContent = valorMarca;

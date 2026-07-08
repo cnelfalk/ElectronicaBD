@@ -14,7 +14,7 @@ class ProductoServicio:
 
     # listarProductos - metodo que orquesta la busqueda y prepara la respuesta
     def listarProductos(self, categoria, perfil, busqueda, marca=None, ordenar=None):
-        productos = self.productoDao.obtenerCatalogoFiltrado(categoria, perfil, busqueda, marca, ordenar)
+        productos = self.productoDao.obtenerCatalogoFiltrado(categoria, busqueda, marca, ordenar)
 
         if productos:
             productos_dict = [p.to_dict() if hasattr(p, 'to_dict') else p for p in productos]
