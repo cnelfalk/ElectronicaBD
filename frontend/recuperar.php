@@ -549,6 +549,8 @@
                     iniciarTimerReenvio();
                     otpInputs.forEach(i => { i.value = ''; i.classList.remove('filled'); });
                     otpInputs[0].focus();
+                } else {
+                    mostrarError(datos.mensaje || 'Error al reenviar el código.');
                 }
             } catch (error) {
                 mostrarError('Error al reenviar el código.');
